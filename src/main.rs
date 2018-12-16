@@ -1,4 +1,5 @@
 mod lexer;
+use crate::lexer::lexer;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -9,7 +10,7 @@ fn main() {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
-                println!("{:?}", lexer::lexer().parse(line.as_bytes()));
+                println!("{:?}", lexer().parse(line.as_bytes()));
             },
             Err(ReadlineError::Interrupted) => {
                 break
