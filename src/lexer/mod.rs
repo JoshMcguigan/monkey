@@ -11,6 +11,12 @@ pub enum Token {
     INT(u32),
     ASSIGN,
     PLUS,
+    MINUS,
+    SLASH,
+    ASTERISK,
+    LT,
+    GT,
+    BANG,
     COMMA,
     SEMICOLON,
     LPAREN,
@@ -56,6 +62,12 @@ fn lex_token() -> Parser<u8, Token> {
         | lex_int()
         | seq(b"=").map(|_| Token::ASSIGN)
         | seq(b"+").map(|_| Token::PLUS)
+        | seq(b"-").map(|_| Token::MINUS)
+        | seq(b"/").map(|_| Token::SLASH)
+        | seq(b"*").map(|_| Token::ASTERISK)
+        | seq(b"<").map(|_| Token::LT)
+        | seq(b">").map(|_| Token::GT)
+        | seq(b"!").map(|_| Token::BANG)
         | seq(b"(").map(|_| Token::LPAREN)
         | seq(b")").map(|_| Token::RPAREN)
         | seq(b"{").map(|_| Token::LBRACE)
@@ -65,7 +77,7 @@ fn lex_token() -> Parser<u8, Token> {
     ) - space().opt()
 }
 
-fn lex() -> Parser<u8, Vec<Token>> {
+fn lexer() -> Parser<u8, Vec<Token>> {
     ( lex_token().repeat(0..) + end() )
         .map(|(mut tokens, _eof)| {tokens.push(Token::EOF); tokens})
 }
@@ -77,7 +89,7 @@ mod tests {
     #[test]
     fn lex_tokens() {
         let input = "=+(){},;";
-        let tokens = lex().parse(input.as_bytes());
+        let tokens = lexer().parse(input.as_bytes());
 
         assert_eq!(
             vec![
@@ -98,7 +110,7 @@ mod tests {
     #[test]
     fn lex_let() {
         let input = "let five = 5;";
-        let tokens = lex().parse(input.as_bytes());
+        let tokens = lexer().parse(input.as_bytes());
 
         assert_eq!(
             vec![
@@ -116,7 +128,7 @@ mod tests {
     #[test]
     fn lex_let_ident_contains_keyword() {
         let input = "let letter = 5;";
-        let tokens = lex().parse(input.as_bytes());
+        let tokens = lexer().parse(input.as_bytes());
 
         assert_eq!(
             vec![
@@ -134,7 +146,7 @@ mod tests {
     #[test]
     fn lex_ident_ending_with_semicolon() {
         let input = "let ten = 5 + five;";
-        let tokens = lex().parse(input.as_bytes());
+        let tokens = lexer().parse(input.as_bytes());
 
         assert_eq!(
             vec![
@@ -158,7 +170,7 @@ mod tests {
               x + y;
             };
         "#;
-        let tokens = lex().parse(input.as_bytes());
+        let tokens = lexer().parse(input.as_bytes());
 
         assert_eq!(
             vec![
@@ -187,7 +199,7 @@ mod tests {
     #[test]
     fn lex_function_call() {
         let input = "let result = add(five, ten);";
-        let tokens = lex().parse(input.as_bytes());
+        let tokens = lexer().parse(input.as_bytes());
 
         assert_eq!(
             vec![
@@ -201,6 +213,25 @@ mod tests {
                 Token::IDENT(String::from("ten")),
                 Token::RPAREN,
                 Token::SEMICOLON,
+                Token::EOF,
+            ],
+            tokens.unwrap()
+        );
+    }
+
+    #[test]
+    fn lex_additional_opeations() {
+        let input = "- / * < > !";
+        let tokens = lexer().parse(input.as_bytes());
+
+        assert_eq!(
+            vec![
+                Token::MINUS,
+                Token::SLASH,
+                Token::ASTERISK,
+                Token::LT,
+                Token::GT,
+                Token::BANG,
                 Token::EOF,
             ],
             tokens.unwrap()
