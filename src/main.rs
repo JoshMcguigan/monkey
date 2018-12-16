@@ -1,0 +1,3 @@
+mod lexer;
+
+fn main() {}

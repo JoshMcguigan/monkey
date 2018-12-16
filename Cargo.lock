@@ -1,0 +1,14 @@
+[[package]]
+name = "monkey"
+version = "0.1.0"
+dependencies = [
+ "pom 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "pom"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[metadata]
+"checksum pom 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a7f232ecd7c9cac62300856c07b3f115965bf875102b94c62196215a3a11da4a"
