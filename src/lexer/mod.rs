@@ -4,8 +4,8 @@ use pom::parser::{seq, one_of, is_a, not_a, end};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone)]
+#[allow(non_camel_case_types)]
 pub enum Token {
-//    ILLEGAL, // this variant may not be necessary given the way I am lexing
     EOF,
     IDENT(String),
     INT(u32),
@@ -30,6 +30,8 @@ pub enum Token {
     RETURN,
     TRUE,
     FALSE,
+    EQ,
+    NOT_EQ,
 }
 
 fn space() -> Parser<u8, ()> {
@@ -66,6 +68,8 @@ fn lex_token() -> Parser<u8, Token> {
         | lex_keyword("false", Token::FALSE)
         | lex_ident()
         | lex_int()
+        | seq(b"==").map(|_| Token::EQ)
+        | seq(b"!=").map(|_| Token::NOT_EQ)
         | seq(b"=").map(|_| Token::ASSIGN)
         | seq(b"+").map(|_| Token::PLUS)
         | seq(b"-").map(|_| Token::MINUS)
@@ -277,4 +281,29 @@ mod tests {
             tokens.unwrap()
         );
     }
+
+    #[test]
+    fn lex_equal_not_equal() {
+        let input = r#"
+            10 == 10;
+            10 != 9;
+        "#;
+        let tokens = lexer().parse(input.as_bytes());
+
+        assert_eq!(
+            vec![
+                Token::INT(10),
+                Token::EQ,
+                Token::INT(10),
+                Token::SEMICOLON,
+                Token::INT(10),
+                Token::NOT_EQ,
+                Token::INT(9),
+                Token::SEMICOLON,
+                Token::EOF,
+            ],
+            tokens.unwrap()
+        );
+    }
+
 }
