@@ -3,7 +3,7 @@ use pom::parser::{seq, one_of, is_a, not_a, end};
 
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
 //    ILLEGAL, // this variant may not be necessary given the way I am lexing
     EOF,
@@ -25,18 +25,19 @@ pub enum Token {
     RBRACE,
     FUNCTION,
     LET,
+    IF,
+    ELSE,
+    RETURN,
+    TRUE,
+    FALSE,
 }
 
 fn space() -> Parser<u8, ()> {
     one_of(b" \t\r\n").repeat(1..).discard()
 }
 
-fn lex_let() -> Parser<u8, Token> {
-    seq(b"let").map(|_| Token::LET) - space()
-}
-
-fn lex_fn() -> Parser<u8, Token> {
-    seq(b"fn").map(|_| Token::FUNCTION)
+fn lex_keyword(match_str: &'static str, token: Token) -> Parser<u8, Token> {
+    seq(match_str.as_bytes()).map(move |_| token.clone())
         - -not_a(|byte| char::from(byte).is_alphabetic())
 }
 
@@ -56,8 +57,13 @@ fn lex_int() -> Parser<u8, Token> {
 
 fn lex_token() -> Parser<u8, Token> {
     space().opt() * (
-          lex_let()
-        | lex_fn()
+          lex_keyword("let", Token::LET)
+        | lex_keyword("fn", Token::FUNCTION)
+        | lex_keyword("if", Token::IF)
+        | lex_keyword("else", Token::ELSE)
+        | lex_keyword("return", Token::RETURN)
+        | lex_keyword("true", Token::TRUE)
+        | lex_keyword("false", Token::FALSE)
         | lex_ident()
         | lex_int()
         | seq(b"=").map(|_| Token::ASSIGN)
@@ -232,6 +238,40 @@ mod tests {
                 Token::LT,
                 Token::GT,
                 Token::BANG,
+                Token::EOF,
+            ],
+            tokens.unwrap()
+        );
+    }
+
+    #[test]
+    fn lex_additional_keywords() {
+        let input = r#"
+            if (x) {
+                return true;
+            } else {
+                return false;
+            }
+        "#;
+        let tokens = lexer().parse(input.as_bytes());
+
+        assert_eq!(
+            vec![
+                Token::IF,
+                Token::LPAREN,
+                Token::IDENT(String::from("x")),
+                Token::RPAREN,
+                Token::LBRACE,
+                Token::RETURN,
+                Token::TRUE,
+                Token::SEMICOLON,
+                Token::RBRACE,
+                Token::ELSE,
+                Token::LBRACE,
+                Token::RETURN,
+                Token::FALSE,
+                Token::SEMICOLON,
+                Token::RBRACE,
                 Token::EOF,
             ],
             tokens.unwrap()
