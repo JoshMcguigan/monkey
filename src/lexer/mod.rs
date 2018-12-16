@@ -1,5 +1,4 @@
-use pom::Parser;
-use pom::parser::{seq, one_of, is_a, not_a, end};
+use pom::parser::{Parser, seq, one_of, is_a, not_a, end};
 
 use std::str::FromStr;
 
@@ -34,22 +33,22 @@ pub enum Token {
     NOT_EQ,
 }
 
-fn space() -> Parser<u8, ()> {
+fn space<'a>() -> Parser<'a, u8, ()> {
     one_of(b" \t\r\n").repeat(1..).discard()
 }
 
-fn lex_keyword(match_str: &'static str, token: Token) -> Parser<u8, Token> {
+fn lex_keyword<'a>(match_str: &'static str, token: Token) -> Parser<'a, u8, Token> {
     seq(match_str.as_bytes()).map(move |_| token.clone())
         - -not_a(|byte| char::from(byte).is_alphabetic())
 }
 
-fn lex_ident() -> Parser<u8, Token> {
+fn lex_ident<'a>() -> Parser<'a, u8, Token> {
     is_a(|byte| char::from(byte).is_alphabetic())
         .repeat(1..).convert(String::from_utf8)
         .map(|ident| Token::IDENT(ident) )
 }
 
-fn lex_int() -> Parser<u8, Token> {
+fn lex_int<'a>() -> Parser<'a, u8, Token> {
     is_a(|byte| char::from(byte).is_numeric())
         .repeat(1..)
         .convert(String::from_utf8)
@@ -57,7 +56,7 @@ fn lex_int() -> Parser<u8, Token> {
         .map(|num| Token::INT(num) )
 }
 
-fn lex_token() -> Parser<u8, Token> {
+fn lex_token<'a>() -> Parser<'a, u8, Token> {
     space().opt() * (
           lex_keyword("let", Token::LET)
         | lex_keyword("fn", Token::FUNCTION)
@@ -87,7 +86,7 @@ fn lex_token() -> Parser<u8, Token> {
     ) - space().opt()
 }
 
-fn lexer() -> Parser<u8, Vec<Token>> {
+pub fn lexer<'a>() -> Parser<'a, u8, Vec<Token>> {
     ( lex_token().repeat(0..) + end() )
         .map(|(mut tokens, _eof)| {tokens.push(Token::EOF); tokens})
 }
