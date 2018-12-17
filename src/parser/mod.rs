@@ -11,7 +11,23 @@ enum Statement {
 enum Expr {
     Const(u32),
     Ident(String),
+    Prefix{prefix: Prefix, value: Box<Expr>},
+    Infix{left: Box<Expr>, operator: Operator, right: Box<Expr>},
 }
+
+#[derive(Debug, PartialEq)]
+enum Prefix {
+    Bang,
+    Minus,
+}
+
+#[derive(Debug, PartialEq)]
+enum Operator {
+    Plus,
+    Minus,
+}
+
+
 
 fn parse(mut input: Vec<Token>) -> Vec<Statement> {
     let mut program = vec![];
@@ -56,7 +72,15 @@ fn parse_expression(input: &mut Vec<Token>) -> Expr {
     match input.remove(0) {
         Token::INT(value) => Expr::Const(value),
         Token::IDENT(value) => Expr::Ident(value),
-        _ => panic!("parse error at let statement"),
+        Token::BANG => Expr::Prefix{
+            prefix: Prefix::Bang,
+            value: Box::new(parse_expression(input))
+        },
+        Token::MINUS => Expr::Prefix{
+            prefix: Prefix::Minus,
+            value: Box::new(parse_expression(input))
+        },
+        _ => panic!("parse error at expression"),
     }
 }
 
@@ -115,6 +139,45 @@ mod tests {
         assert_eq!(
             vec![
                 Statement::Expression(Expr::Ident(String::from("foo"))),
+            ],
+            ast
+        );
+    }
+
+    #[test]
+    fn parse_expression_statement_const() {
+        let input = "5;";
+        let tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(Expr::Const(5)),
+            ],
+            ast
+        );
+    }
+
+    #[test]
+    fn parse_prefix_expression() {
+        let input = "!5; -15;";
+        let tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(
+                    Expr::Prefix{
+                        prefix: Prefix::Bang,
+                        value: Box::new(Expr::Const(5))
+                    }
+                ),
+                Statement::Expression(
+                    Expr::Prefix{
+                        prefix: Prefix::Minus,
+                        value: Box::new(Expr::Const(15))
+                    }
+                ),
             ],
             ast
         );
