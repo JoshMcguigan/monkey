@@ -10,6 +10,7 @@ enum Statement {
 #[derive(Debug, PartialEq)]
 enum Expr {
     Const(u32),
+    Boolean(bool),
     Ident(String),
     Prefix{prefix: Prefix, value: Box<Expr>},
     Infix{left: Box<Expr>, operator: Operator, right: Box<Expr>},
@@ -25,6 +26,12 @@ enum Prefix {
 enum Operator {
     Plus,
     Minus,
+    Multiply,
+    Divide,
+    GreaterThan,
+    LessThan,
+    Equals,
+    NotEquals,
 }
 
 #[derive(PartialOrd, PartialEq)]
@@ -84,6 +91,8 @@ fn parse_return(input: &mut Vec<Token>, program: &mut Vec<Statement>) {
 fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
     let mut left_expr = match input.remove(0) {
         Token::INT(value) => Expr::Const(value),
+        Token::TRUE => Expr::Boolean(true),
+        Token::FALSE => Expr::Boolean(false),
         Token::IDENT(value) => Expr::Ident(value),
         Token::BANG => Expr::Prefix{
             prefix: Prefix::Bang,
@@ -110,12 +119,12 @@ fn parse_infix(left: Expr, input: &mut Vec<Token>) -> Expr {
     let operator = match &next_token {
         Token::PLUS => Operator::Plus,
         Token::MINUS => Operator::Minus,
-//        Token::SLASH => {},
-//        Token::ASTERISK => {},
-//        Token::LT => {},
-//        Token::GT => {},
-//        Token::EQ => {},
-//        Token::NOT_EQ => {},
+        Token::SLASH => Operator::Divide,
+        Token::ASTERISK => Operator::Multiply,
+        Token::LT => Operator::LessThan,
+        Token::GT => Operator::GreaterThan,
+        Token::EQ => Operator::Equals,
+        Token::NOT_EQ => Operator::NotEquals,
         _ => panic!("parse infix called on invalid operator"),
     };
     Expr::Infix {
@@ -246,8 +255,24 @@ mod tests {
     }
 
     #[test]
-    fn parse_infix_expression() {
-        let input = "5 + 6;";
+    fn parse_infix_expressions() {
+        let test_cases = vec![
+            ("5 + 6;", Operator::Plus),
+            ("5 - 6;", Operator::Minus),
+            ("5 * 6;", Operator::Multiply),
+            ("5 / 6;", Operator::Divide),
+            ("5 > 6;", Operator::GreaterThan),
+            ("5 < 6;", Operator::LessThan),
+            ("5 == 6;", Operator::Equals),
+            ("5 != 6;", Operator::NotEquals),
+        ];
+
+        for (input, operator) in test_cases {
+            parse_infix_expression(input, operator);
+        }
+    }
+
+    fn parse_infix_expression(input: &str, operator: Operator) {
         let tokens = lexer().parse(input.as_bytes()).unwrap();
         let ast = parse(tokens);
 
@@ -255,11 +280,48 @@ mod tests {
             vec![
                 Statement::Expression(Expr::Infix{
                     left: Box::new(Expr::Const(5)),
-                    operator: Operator::Plus,
+                    operator,
                     right: Box::new(Expr::Const(6)),
                 }),
             ],
             ast
         );
     }
+
+    #[test]
+    fn parse_infix_expression_order_of_operations() {
+        let input = "-a * 6;";
+        let tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(Expr::Infix{
+                    left: Box::new(Expr::Prefix{ prefix: Prefix::Minus, value: Box::new(Expr::Ident(String::from("a")))}),
+                    operator: Operator::Multiply,
+                    right: Box::new(Expr::Const(6)),
+                }),
+            ],
+            ast
+        );
+    }
+
+    #[test]
+    fn parse_bool() {
+        let input = "!true == false;";
+        let tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(Expr::Infix{
+                    left: Box::new(Expr::Prefix{ prefix: Prefix::Bang, value: Box::new(Expr::Boolean(true))}),
+                    operator: Operator::Equals,
+                    right: Box::new(Expr::Boolean(false)),
+                }),
+            ],
+            ast
+        );
+    }
+
 }
