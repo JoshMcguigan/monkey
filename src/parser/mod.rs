@@ -87,11 +87,8 @@ fn parse_let(input: &mut Vec<Token>, program: &mut Vec<Statement>) {
 
 fn parse_return(input: &mut Vec<Token>, program: &mut Vec<Statement>) {
     assert_eq!(Token::RETURN, input.remove(0));
-    let value = match input.remove(0) {
-        Token::INT(value) => value,
-        _ => panic!("parse error at return statement"),
-    };
-    program.push(Statement::Return {value: Expr::Const(value)});
+    let value = parse_expression(input, Precedence::Lowest);
+    program.push(Statement::Return {value});
 }
 
 fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
@@ -116,7 +113,6 @@ fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
                                 _ => panic!("unexpected type passed as argument to function"),
                             }
                         },
-                        _ => panic!("unexpected parameter found while parsing function args"),
                     }
 
                     match input.remove(0) {
