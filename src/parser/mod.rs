@@ -14,6 +14,7 @@ enum Expr {
     Ident(String),
     Prefix{prefix: Prefix, value: Box<Expr>},
     Infix{left: Box<Expr>, operator: Operator, right: Box<Expr>},
+    If{condition: Box<Expr>, consequence: Vec<Statement>, alternative: Vec<Statement>},
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,7 +46,7 @@ enum Precedence {
     Call,        // myFunction(X)
 }
 
-fn parse(mut input: Vec<Token>) -> Vec<Statement> {
+fn parse(input: &mut Vec<Token>) -> Vec<Statement> {
     let mut program = vec![];
 
     loop {
@@ -53,11 +54,14 @@ fn parse(mut input: Vec<Token>) -> Vec<Statement> {
 
         match token {
             Token::EOF => break,
-            Token::LET => parse_let(&mut input, &mut program),
-            Token::RETURN => parse_return(&mut input, &mut program),
+            Token::LET => parse_let(input, &mut program),
+            Token::RETURN => parse_return(input, &mut program),
+            Token::RBRACE => {
+                break;
+            },
             _ => program.push(
                 Statement::Expression(
-                    parse_expression(&mut input, Precedence::Lowest)
+                    parse_expression(input, Precedence::Lowest)
                 )
             )
         }
@@ -108,6 +112,33 @@ fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
 
             expr
         },
+        Token::IF => {
+            assert_eq!(Token::LPAREN, input.remove(0));
+            let condition = parse_expression(input, Precedence::Lowest);
+            assert_eq!(Token::RPAREN, input.remove(0));
+
+            assert_eq!(Token::LBRACE, input.remove(0));
+            let consequence = parse(input);
+            assert_eq!(Token::RBRACE, input.remove(0));
+
+            let alternative = if &input[0] == &Token::ELSE {
+                input.remove(0);
+
+                assert_eq!(Token::LBRACE, input.remove(0));
+                let alternative = parse(input);
+                assert_eq!(Token::RBRACE, input.remove(0));
+
+                alternative
+            } else {
+                Vec::new()
+            };
+
+            Expr::If {
+                condition: Box::new(condition),
+                consequence,
+                alternative,
+            }
+        }
         _ => panic!("parse error at expression"),
     };
 
@@ -163,8 +194,8 @@ mod tests {
     #[test]
     fn parse_let() {
         let input = "let x = 5;";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -177,8 +208,8 @@ mod tests {
     #[test]
     fn parse_return() {
         let input = "return 5;";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -191,8 +222,8 @@ mod tests {
     #[test]
     fn parse_let_ident() {
         let input = "let myVar = anotherV;";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -205,8 +236,8 @@ mod tests {
     #[test]
     fn parse_expression_statement() {
         let input = "foo;";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -219,8 +250,8 @@ mod tests {
     #[test]
     fn parse_expression_statement_const() {
         let input = "5;";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -233,8 +264,8 @@ mod tests {
     #[test]
     fn parse_prefix_expression() {
         let input = "!5; -15;";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -279,8 +310,8 @@ mod tests {
     }
 
     fn parse_infix_expression(input: &str, operator: Operator) {
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -297,8 +328,8 @@ mod tests {
     #[test]
     fn parse_infix_expression_order_of_operations() {
         let input = "-a * 6;";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -315,8 +346,8 @@ mod tests {
     #[test]
     fn parse_bool() {
         let input = "!true == false;";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -333,8 +364,8 @@ mod tests {
     #[test]
     fn parse_paren() {
         let input = "1 + (2 + 3);";
-        let tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(tokens);
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
         assert_eq!(
             vec![
@@ -346,6 +377,42 @@ mod tests {
                         operator: Operator::Plus,
                         right: Box::new(Expr::Const(3))
                     }),
+                }),
+            ],
+            ast
+        );
+    }
+
+    #[test]
+    fn parse_if() {
+        let input = "if (5) { 6; };";
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(Expr::If{
+                    condition: Box::new(Expr::Const(5)),
+                    consequence: vec![Statement::Expression(Expr::Const(6))],
+                    alternative: Vec::new()
+                }),
+            ],
+            ast
+        );
+    }
+
+    #[test]
+    fn parse_if_else() {
+        let input = "if (5) { 6; } else { 7; };";
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(Expr::If{
+                    condition: Box::new(Expr::Const(5)),
+                    consequence: vec![Statement::Expression(Expr::Const(6))],
+                    alternative: vec![Statement::Expression(Expr::Const(7))],
                 }),
             ],
             ast
