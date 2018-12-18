@@ -4,12 +4,14 @@ use crate::parser::Expr;
 #[derive(Debug, PartialEq)]
 pub enum Object {
     Integer(u32),
-    Null
+    Boolean(bool),
+    Null,
 }
 
 fn eval_expr(expression: Expr) -> Object {
     match expression {
         Expr::Const(num) => Object::Integer(num),
+        Expr::Boolean(val) => Object::Boolean(val),
         _ => panic!("eval expr not implemented for this type")
     }
 }
@@ -35,13 +37,23 @@ mod tests {
 
     #[test]
     fn eval_int_literal() {
-        let input = "5;";
+        test_eval("5;", Object::Integer(5));
+    }
+
+
+    #[test]
+    fn eval_bool() {
+        test_eval("true;", Object::Boolean(true));
+        test_eval("false;", Object::Boolean(false));
+    }
+
+    fn test_eval(input: &str, expected: Object) {
         let mut tokens = lexer().parse(input.as_bytes()).unwrap();
         let ast = parse(&mut tokens);
         let obj = eval_statements(ast);
 
         assert_eq!(
-            Object::Integer(5),
+            expected,
             obj
         );
     }

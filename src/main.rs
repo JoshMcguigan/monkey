@@ -20,6 +20,7 @@ fn main() {
                 let ast = parse(&mut tokens);
                 match eval_statements(ast) {
                     Object::Integer(num) => println!("{}", num),
+                    Object::Boolean(val) => println!("{}", val),
                     Object::Null => println!("null"),
                 }
             },
