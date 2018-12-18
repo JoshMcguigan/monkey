@@ -4,7 +4,7 @@ use crate::parser::Prefix;
 
 #[derive(Debug, PartialEq)]
 pub enum Object {
-    Integer(u32),
+    Integer(i32),
     Boolean(bool),
     Null,
 }
@@ -17,6 +17,12 @@ fn eval_expr(expression: Expr) -> Object {
             match *expr {
                 Expr::Boolean(val) => Object::Boolean(!val),
                 _ => panic!("! operator only valid for boolean type"),
+            }
+        },
+        Expr::Prefix { prefix: Prefix::Minus, value: expr } => {
+            match *expr {
+                Expr::Const(val) => Object::Integer(-val),
+                _ => panic!("minus operator only valid for integer type"),
             }
         },
         _ => panic!("eval expr not implemented for this type")
@@ -57,6 +63,11 @@ mod tests {
     fn eval_bang() {
         test_eval("!true;", Object::Boolean(false));
         test_eval("!false;", Object::Boolean(true));
+    }
+
+    #[test]
+    fn eval_negative() {
+        test_eval("-5;", Object::Integer(-5));
     }
 
     fn test_eval(input: &str, expected: Object) {

@@ -7,7 +7,7 @@ use std::str::FromStr;
 pub enum Token {
     EOF,
     IDENT(String),
-    INT(u32),
+    INT(i32),
     ASSIGN,
     PLUS,
     MINUS,
@@ -52,7 +52,7 @@ fn lex_int<'a>() -> Parser<'a, u8, Token> {
     is_a(|byte| char::from(byte).is_numeric())
         .repeat(1..)
         .convert(String::from_utf8)
-        .convert(|num|u32::from_str(&num))
+        .convert(|num|i32::from_str(&num))
         .map(|num| Token::INT(num) )
 }
 

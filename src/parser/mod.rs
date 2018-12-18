@@ -9,7 +9,7 @@ pub enum Statement {
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
-    Const(u32),
+    Const(i32),
     Boolean(bool),
     Ident(String),
     Prefix{prefix: Prefix, value: Box<Expr>},
