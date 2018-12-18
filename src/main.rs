@@ -5,7 +5,7 @@ mod lexer;
 use crate::lexer::lexer;
 
 mod eval;
-use crate::eval::{eval_statements, Object};
+use crate::eval::{eval_program, Object};
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -18,7 +18,7 @@ fn main() {
             Ok(line) => {
                 let mut tokens = lexer().parse(line.as_bytes()).unwrap();
                 let ast = parse(&mut tokens);
-                display_object(eval_statements(ast));
+                display_object(eval_program(ast));
             },
             Err(ReadlineError::Interrupted) => {
                 break

@@ -88,15 +88,19 @@ fn eval_expr(expression: Expr) -> Object {
     }
 }
 
-pub fn eval_statements(statements: Vec<Statement>) -> Object {
+fn eval_statement(statement: Statement) -> Object {
+    match statement {
+        Statement::Expression(expr) => eval_expr(expr),
+        Statement::Return{value: expr} => Object::Return(Box::new(eval_expr(expr))),
+        _ => panic!("unsupported statement type"),
+    }
+}
+
+fn eval_statements(statements: Vec<Statement>) -> Object {
     let mut result = Object::Null;
 
     for statement in statements {
-        result = match statement {
-            Statement::Expression(expr) => eval_expr(expr),
-            Statement::Return{value: expr} => return Object::Return(Box::new(eval_expr(expr))),
-            _ => panic!("unsupported statement type"),
-        };
+        result = eval_statement(statement);
 
         if let &Object::Return(_) = &result {
             return result;
@@ -107,17 +111,13 @@ pub fn eval_statements(statements: Vec<Statement>) -> Object {
 }
 
 pub fn eval_program(statements: Vec<Statement>) -> Object {
-    let mut result = Object::Null;
+    let result = eval_statements(statements);
 
-    for statement in statements {
-        result = match statement {
-            Statement::Expression(expr) => eval_expr(expr),
-            Statement::Return{value: expr} => Object::Return(Box::new(eval_expr(expr))),
-            _ => panic!("unsupported statement type"),
-        };
-
-        if let Object::Return(obj) = result {
-            return *obj;
+    // if object is return type, unwrap it
+    if let &Object::Return(_) = &result {
+        match result {
+            Object::Return(res) => return *res,
+            _ => unreachable!(),
         }
     }
 
@@ -205,6 +205,11 @@ mod tests {
             };
         "#, Object::Integer(10));
     }
+
+//    #[test]
+//    fn eval_binding() {
+//        test_eval("let a = 10; a;", Object::Integer(10));
+//    }
 
     fn test_eval(input: &str, expected: Object) {
         let mut tokens = lexer().parse(input.as_bytes()).unwrap();
