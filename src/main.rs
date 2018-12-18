@@ -1,4 +1,5 @@
 mod parser;
+use crate::parser::parse;
 
 mod lexer;
 use crate::lexer::lexer;
@@ -12,7 +13,9 @@ fn main() {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
-                println!("{:?}", lexer().parse(line.as_bytes()));
+                let mut tokens = lexer().parse(line.as_bytes()).unwrap();
+                let ast = parse(&mut tokens);
+                println!("{:#?}", ast);
             },
             Err(ReadlineError::Interrupted) => {
                 break

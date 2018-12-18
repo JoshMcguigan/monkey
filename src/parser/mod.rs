@@ -1,14 +1,14 @@
-use crate::lexer::{Token, lexer};
+use crate::lexer::Token;
 
 #[derive(Debug, PartialEq)]
-enum Statement {
+pub enum Statement {
     Let{ name: String, value: Expr},
     Return{ value: Expr },
     Expression(Expr),
 }
 
 #[derive(Debug, PartialEq)]
-enum Expr {
+pub enum Expr {
     Const(u32),
     Boolean(bool),
     Ident(String),
@@ -20,13 +20,13 @@ enum Expr {
 }
 
 #[derive(Debug, PartialEq)]
-enum Prefix {
+pub enum Prefix {
     Bang,
     Minus,
 }
 
 #[derive(Debug, PartialEq)]
-enum Operator {
+pub enum Operator {
     Plus,
     Minus,
     Multiply,
@@ -48,7 +48,7 @@ enum Precedence {
     Call,        // myFunction(X)
 }
 
-fn parse(input: &mut Vec<Token>) -> Vec<Statement> {
+pub fn parse(input: &mut Vec<Token>) -> Vec<Statement> {
     let mut program = vec![];
 
     loop {
@@ -249,6 +249,7 @@ impl Token {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lexer::lexer;
 
     #[test]
     fn parse_let() {
