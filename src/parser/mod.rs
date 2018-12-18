@@ -16,6 +16,7 @@ enum Expr {
     Infix{left: Box<Expr>, operator: Operator, right: Box<Expr>},
     If{condition: Box<Expr>, consequence: Vec<Statement>, alternative: Vec<Statement>},
     Function{parameters: Vec<String>, body: Vec<Statement>},
+    Call{function: Box<Expr>, arguments: Vec<Expr>},
 }
 
 #[derive(Debug, PartialEq)]
@@ -98,7 +99,40 @@ fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
         Token::INT(value) => Expr::Const(value),
         Token::TRUE => Expr::Boolean(true),
         Token::FALSE => Expr::Boolean(false),
-        Token::IDENT(value) => Expr::Ident(value),
+        Token::IDENT(value) => {
+            if &input[0] == &Token::LPAREN {
+                input.remove(0);
+                let mut args = vec![];
+                // must be idents seperated by comma, or RPAREN
+                loop {
+                    match &input[0] {
+                        Token::RPAREN => {
+                            input.remove(0);
+                            break
+                        },
+                        _ => {
+                            match input.remove(0) {
+                                Token::INT(num) => args.push(Expr::Const(num)),
+                                _ => panic!("unexpected type passed as argument to function"),
+                            }
+                        },
+                        _ => panic!("unexpected parameter found while parsing function args"),
+                    }
+
+                    match input.remove(0) {
+                        Token::RPAREN => break,
+                        Token::COMMA => continue,
+                        _ => panic!("unexpected parameter found while parsing function args"),
+                    }
+                }
+                Expr::Call {
+                    function: Box::new(Expr::Ident(value)),
+                    arguments: args
+                }
+            } else {
+                Expr::Ident(value)
+            }
+        },
         Token::BANG => Expr::Prefix{
             prefix: Prefix::Bang,
             value: Box::new(parse_expression(input, Precedence::Prefix))
@@ -471,6 +505,25 @@ mod tests {
                         ]
                     }
                 },
+            ],
+            ast
+        );
+    }
+
+    #[test]
+    fn parse_function_call() {
+        let input = "add(1, 2);";
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(
+                    Expr::Call {
+                        function: Box::new(Expr::Ident(String::from("add"))),
+                        arguments: vec![Expr::Const(1), Expr::Const(2)]
+                    }
+                )
             ],
             ast
         );
