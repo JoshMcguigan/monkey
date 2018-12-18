@@ -3,7 +3,10 @@ use crate::parser::Expr;
 use crate::parser::Prefix;
 use crate::parser::Operator;
 
-#[derive(Debug, PartialEq)]
+mod env;
+use self::env::Env;
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Object {
     Integer(i32),
     Boolean(bool),
@@ -11,96 +14,101 @@ pub enum Object {
     Return(Box<Object>),
 }
 
-fn eval_expr(expression: Expr) -> Object {
+fn eval_expr(expression: Expr, env: &mut Env) -> Object {
     match expression {
         Expr::Const(num) => Object::Integer(num),
         Expr::Boolean(val) => Object::Boolean(val),
         Expr::Prefix { prefix: Prefix::Bang, value: expr } => {
-            match eval_expr(*expr) {
+            match eval_expr(*expr, env) {
                 Object::Boolean(val) => Object::Boolean(!val),
                 _ => panic!("! operator only valid for boolean type"),
             }
         },
         Expr::Prefix { prefix: Prefix::Minus, value: expr } => {
-            match eval_expr(*expr) {
+            match eval_expr(*expr, env) {
                 Object::Integer(val) => Object::Integer(-val),
                 _ => panic!("minus operator only valid for integer type"),
             }
         },
         Expr::Infix { left, operator: Operator::Plus, right } => {
-            match (eval_expr(*left), eval_expr(*right)) {
+            match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Integer(left + right),
                 _ => panic!("plus operator only valid on integer types")
             }
         },
         Expr::Infix { left, operator: Operator::Minus, right } => {
-            match (eval_expr(*left), eval_expr(*right)) {
+            match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Integer(left - right),
                 _ => panic!("minus operator only valid on integer types")
             }
         },
         Expr::Infix { left, operator: Operator::Multiply, right } => {
-            match (eval_expr(*left), eval_expr(*right)) {
+            match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Integer(left * right),
                 _ => panic!("multiply operator only valid on integer types")
             }
         },
         Expr::Infix { left, operator: Operator::Divide, right } => {
-            match (eval_expr(*left), eval_expr(*right)) {
+            match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Integer(left / right),
                 _ => panic!("divide operator only valid on integer types")
             }
         },
         Expr::Infix { left, operator: Operator::LessThan, right } => {
-            match (eval_expr(*left), eval_expr(*right)) {
+            match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Boolean(left < right),
                 _ => panic!("less than operator only valid on integer types")
             }
         },
         Expr::Infix { left, operator: Operator::GreaterThan, right } => {
-            match (eval_expr(*left), eval_expr(*right)) {
+            match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Boolean(left > right),
                 _ => panic!("greater than operator only valid on integer types")
             }
         },
         Expr::Infix { left, operator: Operator::Equals, right } => {
-            match (eval_expr(*left), eval_expr(*right)) {
+            match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Boolean(left == right),
                 (Object::Boolean(left), Object::Boolean(right)) => Object::Boolean(left == right),
                 _ => panic!("equals operator used on invalid types")
             }
         },
         Expr::Infix { left, operator: Operator::NotEquals, right } => {
-            match (eval_expr(*left), eval_expr(*right)) {
+            match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Boolean(left != right),
                 (Object::Boolean(left), Object::Boolean(right)) => Object::Boolean(left != right),
                 _ => panic!("not equals operator used on invalid types")
             }
         },
         Expr::If { condition, consequence, alternative } => {
-            if eval_expr(*condition) == Object::Boolean(true) {
-                eval_statements(consequence)
+            if eval_expr(*condition, env) == Object::Boolean(true) {
+                eval_statements(consequence, env)
             } else {
-                eval_statements(alternative)
+                eval_statements(alternative, env)
             }
         },
+        Expr::Ident(name) => env.get(&name).expect("attempted access to invalid binding"),
         _ => panic!("eval expr not implemented for this type")
     }
 }
 
-fn eval_statement(statement: Statement) -> Object {
+fn eval_statement(statement: Statement, env: &mut Env) -> Object {
     match statement {
-        Statement::Expression(expr) => eval_expr(expr),
-        Statement::Return{value: expr} => Object::Return(Box::new(eval_expr(expr))),
-        _ => panic!("unsupported statement type"),
+        Statement::Expression(expr) => eval_expr(expr, env),
+        Statement::Let{name, value} => {
+            let value = eval_expr(value, env);
+            env.set(name, value);
+            Object::Null
+        },
+        Statement::Return{value: expr} => Object::Return(Box::new(eval_expr(expr, env))),
     }
 }
 
-fn eval_statements(statements: Vec<Statement>) -> Object {
+fn eval_statements(statements: Vec<Statement>, env: &mut Env) -> Object {
     let mut result = Object::Null;
 
     for statement in statements {
-        result = eval_statement(statement);
+        result = eval_statement(statement, env);
 
         if let &Object::Return(_) = &result {
             return result;
@@ -111,7 +119,9 @@ fn eval_statements(statements: Vec<Statement>) -> Object {
 }
 
 pub fn eval_program(statements: Vec<Statement>) -> Object {
-    let result = eval_statements(statements);
+    let mut env = Env::new();
+
+    let result = eval_statements(statements, &mut env);
 
     // if object is return type, unwrap it
     if let &Object::Return(_) = &result {
@@ -206,10 +216,13 @@ mod tests {
         "#, Object::Integer(10));
     }
 
-//    #[test]
-//    fn eval_binding() {
-//        test_eval("let a = 10; a;", Object::Integer(10));
-//    }
+    #[test]
+    fn eval_binding() {
+        test_eval("let a = 10; a;", Object::Integer(10));
+        test_eval("let a = 5 * 5; a;", Object::Integer(25));
+        test_eval("let a = 5 * 5; let b = a; b;", Object::Integer(25));
+        test_eval("let a = 5; let b = a; let c = a + b + 5; c;", Object::Integer(15));
+    }
 
     fn test_eval(input: &str, expected: Object) {
         let mut tokens = lexer().parse(input.as_bytes()).unwrap();
