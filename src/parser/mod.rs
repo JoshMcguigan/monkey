@@ -15,6 +15,7 @@ enum Expr {
     Prefix{prefix: Prefix, value: Box<Expr>},
     Infix{left: Box<Expr>, operator: Operator, right: Box<Expr>},
     If{condition: Box<Expr>, consequence: Vec<Statement>, alternative: Vec<Statement>},
+    Function{parameters: Vec<String>, body: Vec<Statement>},
 }
 
 #[derive(Debug, PartialEq)]
@@ -138,7 +139,35 @@ fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
                 consequence,
                 alternative,
             }
-        }
+        },
+        Token::FUNCTION => {
+            let mut parameters = vec![];
+            assert_eq!(Token::LPAREN, input.remove(0));
+            // must be idents seperated by comma, or RPAREN
+            loop {
+                match input.remove(0) {
+                    Token::RPAREN => break,
+                    Token::IDENT(ident) => {
+                        parameters.push(ident);
+                        match input.remove(0) {
+                            Token::RPAREN => break,
+                            Token::COMMA => continue,
+                            _ => panic!("unexpected parameter found while parsing function parameters"),
+                        }
+                    },
+                    _ => panic!("unexpected parameter found while parsing function parameters"),
+                }
+            }
+
+            assert_eq!(Token::LBRACE, input.remove(0));
+            let body = parse(input);
+            assert_eq!(Token::RBRACE, input.remove(0));
+
+            Expr::Function {
+                parameters,
+                body,
+            }
+        },
         _ => panic!("parse error at expression"),
     };
 
@@ -418,5 +447,35 @@ mod tests {
             ast
         );
     }
+
+    #[test]
+    fn parse_function_literal() {
+        let input = "let myFunc = fn(x, y) {x + y;};";
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Let{
+                    name: String::from("myFunc"),
+                    value: Expr::Function {
+                        parameters: vec![String::from("x"), String::from("y")],
+                        body: vec![
+                            Statement::Expression(
+                                Expr::Infix {
+                                    left: Box::new(Expr::Ident(String::from("x"))),
+                                    operator: Operator::Plus,
+                                    right: Box::new(Expr::Ident(String::from("y")))
+                                }
+                            )
+                        ]
+                    }
+                },
+            ],
+            ast
+        );
+    }
+
+
 
 }
