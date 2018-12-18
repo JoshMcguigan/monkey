@@ -102,6 +102,12 @@ fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
             prefix: Prefix::Minus,
             value: Box::new(parse_expression(input, Precedence::Prefix))
         },
+        Token::LPAREN => {
+            let expr = parse_expression(input, Precedence::Lowest);
+            assert_eq!(Token::RPAREN, input.remove(0));
+
+            expr
+        },
         _ => panic!("parse error at expression"),
     };
 
@@ -318,6 +324,28 @@ mod tests {
                     left: Box::new(Expr::Prefix{ prefix: Prefix::Bang, value: Box::new(Expr::Boolean(true))}),
                     operator: Operator::Equals,
                     right: Box::new(Expr::Boolean(false)),
+                }),
+            ],
+            ast
+        );
+    }
+
+    #[test]
+    fn parse_paren() {
+        let input = "1 + (2 + 3);";
+        let tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(Expr::Infix{
+                    left: Box::new(Expr::Const(1)),
+                    operator: Operator::Plus,
+                    right: Box::new(Expr::Infix {
+                        left: Box::new(Expr::Const(2)),
+                        operator: Operator::Plus,
+                        right: Box::new(Expr::Const(3))
+                    }),
                 }),
             ],
             ast
