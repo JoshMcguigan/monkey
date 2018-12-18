@@ -100,7 +100,7 @@ fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
             if &input[0] == &Token::LPAREN {
                 input.remove(0);
                 let mut args = vec![];
-                // must be idents seperated by comma, or RPAREN
+                // must be expressions separated by comma, or RPAREN
                 loop {
                     match &input[0] {
                         Token::RPAREN => {
@@ -108,10 +108,7 @@ fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
                             break
                         },
                         _ => {
-                            match input.remove(0) {
-                                Token::INT(num) => args.push(Expr::Const(num)),
-                                _ => panic!("unexpected type passed as argument to function"),
-                            }
+                            args.push(parse_expression(input, Precedence::Lowest));
                         },
                     }
 
@@ -526,6 +523,34 @@ mod tests {
         );
     }
 
+    #[test]
+    fn parse_function_expression() {
+        let input = "myFunc(x + y, a + b);";
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
 
+        assert_eq!(
+            vec![
+                Statement::Expression(
+                    Expr::Call {
+                        function: Box::new(Expr::Ident(String::from("myFunc"))),
+                        arguments: vec![
+                            Expr::Infix {
+                                left: Box::new(Expr::Ident(String::from("x"))),
+                                operator: Operator::Plus,
+                                right: Box::new(Expr::Ident(String::from("y")))
+                            },
+                            Expr::Infix {
+                                left: Box::new(Expr::Ident(String::from("a"))),
+                                operator: Operator::Plus,
+                                right: Box::new(Expr::Ident(String::from("b")))
+                            },
+                        ]
+                    }
+                )
+            ],
+            ast
+        );
+    }
 
 }
