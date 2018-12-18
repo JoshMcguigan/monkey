@@ -4,6 +4,9 @@ use crate::parser::parse;
 mod lexer;
 use crate::lexer::lexer;
 
+mod eval;
+use crate::eval::{eval_statements, Object};
+
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
@@ -15,7 +18,10 @@ fn main() {
             Ok(line) => {
                 let mut tokens = lexer().parse(line.as_bytes()).unwrap();
                 let ast = parse(&mut tokens);
-                println!("{:#?}", ast);
+                match eval_statements(ast) {
+                    Object::Integer(num) => println!("{}", num),
+                    Object::Null => println!("null"),
+                }
             },
             Err(ReadlineError::Interrupted) => {
                 break
