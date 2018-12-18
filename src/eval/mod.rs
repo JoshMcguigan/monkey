@@ -1,5 +1,6 @@
 use crate::parser::Statement;
 use crate::parser::Expr;
+use crate::parser::Prefix;
 
 #[derive(Debug, PartialEq)]
 pub enum Object {
@@ -12,6 +13,12 @@ fn eval_expr(expression: Expr) -> Object {
     match expression {
         Expr::Const(num) => Object::Integer(num),
         Expr::Boolean(val) => Object::Boolean(val),
+        Expr::Prefix { prefix: Prefix::Bang, value: expr } => {
+            match *expr {
+                Expr::Boolean(val) => Object::Boolean(!val),
+                _ => panic!("! operator only valid for boolean type"),
+            }
+        },
         _ => panic!("eval expr not implemented for this type")
     }
 }
@@ -40,11 +47,16 @@ mod tests {
         test_eval("5;", Object::Integer(5));
     }
 
-
     #[test]
     fn eval_bool() {
         test_eval("true;", Object::Boolean(true));
         test_eval("false;", Object::Boolean(false));
+    }
+
+    #[test]
+    fn eval_bang() {
+        test_eval("!true;", Object::Boolean(false));
+        test_eval("!false;", Object::Boolean(true));
     }
 
     fn test_eval(input: &str, expected: Object) {
