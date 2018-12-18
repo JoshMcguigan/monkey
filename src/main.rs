@@ -18,11 +18,7 @@ fn main() {
             Ok(line) => {
                 let mut tokens = lexer().parse(line.as_bytes()).unwrap();
                 let ast = parse(&mut tokens);
-                match eval_statements(ast) {
-                    Object::Integer(num) => println!("{}", num),
-                    Object::Boolean(val) => println!("{}", val),
-                    Object::Null => println!("null"),
-                }
+                display_object(eval_statements(ast));
             },
             Err(ReadlineError::Interrupted) => {
                 break
@@ -35,5 +31,14 @@ fn main() {
                 break
             }
         }
+    }
+}
+
+fn display_object(obj: Object) {
+    match obj {
+        Object::Integer(num) => println!("{}", num),
+        Object::Boolean(val) => println!("{}", val),
+        Object::Null => println!("null"),
+        Object::Return(obj) => display_object(*obj),
     }
 }

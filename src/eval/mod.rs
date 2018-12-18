@@ -8,6 +8,7 @@ pub enum Object {
     Integer(i32),
     Boolean(bool),
     Null,
+    Return(Box<Object>),
 }
 
 fn eval_expr(expression: Expr) -> Object {
@@ -93,8 +94,31 @@ pub fn eval_statements(statements: Vec<Statement>) -> Object {
     for statement in statements {
         result = match statement {
             Statement::Expression(expr) => eval_expr(expr),
-            _ => Object::Null,
+            Statement::Return{value: expr} => return Object::Return(Box::new(eval_expr(expr))),
+            _ => panic!("unsupported statement type"),
         };
+
+        if let &Object::Return(_) = &result {
+            return result;
+        }
+    }
+
+    result
+}
+
+pub fn eval_program(statements: Vec<Statement>) -> Object {
+    let mut result = Object::Null;
+
+    for statement in statements {
+        result = match statement {
+            Statement::Expression(expr) => eval_expr(expr),
+            Statement::Return{value: expr} => Object::Return(Box::new(eval_expr(expr))),
+            _ => panic!("unsupported statement type"),
+        };
+
+        if let Object::Return(obj) = result {
+            return *obj;
+        }
     }
 
     result
@@ -166,10 +190,26 @@ mod tests {
         test_eval("if (1 < 2) { 10; } else { 11; };", Object::Integer(10));
     }
 
+    #[test]
+    fn eval_return() {
+        test_eval("return 10;", Object::Integer(10));
+        test_eval("return 10; 11;", Object::Integer(10));
+        test_eval("9; return 2 * 5; 9;", Object::Integer(10));
+        test_eval(r#"
+            if (10 > 1) {
+              if (10 > 1) {
+                return 10;
+              };
+
+              return 1;
+            };
+        "#, Object::Integer(10));
+    }
+
     fn test_eval(input: &str, expected: Object) {
         let mut tokens = lexer().parse(input.as_bytes()).unwrap();
         let ast = parse(&mut tokens);
-        let obj = eval_statements(ast);
+        let obj = eval_program(ast);
 
         assert_eq!(
             expected,
