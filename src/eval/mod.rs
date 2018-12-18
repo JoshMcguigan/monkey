@@ -76,6 +76,13 @@ fn eval_expr(expression: Expr) -> Object {
                 _ => panic!("not equals operator used on invalid types")
             }
         },
+        Expr::If { condition, consequence, alternative } => {
+            if eval_expr(*condition) == Object::Boolean(true) {
+                eval_statements(consequence)
+            } else {
+                eval_statements(alternative)
+            }
+        },
         _ => panic!("eval expr not implemented for this type")
     }
 }
@@ -148,6 +155,15 @@ mod tests {
         test_eval("(1 + 2) > 3;", Object::Boolean(false));
         test_eval("(1 > 2) == false;", Object::Boolean(true));
         test_eval("(1 > 2) != false;", Object::Boolean(false));
+    }
+
+    #[test]
+    fn eval_if() {
+        test_eval("if (true) { 10; };", Object::Integer(10));
+        test_eval("if (false) { 10; };", Object::Null);
+        test_eval("if (false) { 10; } else { 11; };", Object::Integer(11));
+        test_eval("if (1 > 2) { 10; } else { 11; };", Object::Integer(11));
+        test_eval("if (1 < 2) { 10; } else { 11; };", Object::Integer(10));
     }
 
     fn test_eval(input: &str, expected: Object) {
