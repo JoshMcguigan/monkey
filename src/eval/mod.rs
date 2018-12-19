@@ -222,6 +222,7 @@ mod tests {
         test_eval("let a = 5 * 5; a;", Object::Integer(25));
         test_eval("let a = 5 * 5; let b = a; b;", Object::Integer(25));
         test_eval("let a = 5; let b = a; let c = a + b + 5; c;", Object::Integer(15));
+        test_eval("let a = 10;", Object::Integer(10)); // useful for repl
     }
 
     fn test_eval(input: &str, expected: Object) {
