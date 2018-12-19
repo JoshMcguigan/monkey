@@ -109,7 +109,7 @@ fn eval_expr(expression: Expr, env: &mut Env) -> Object {
                 env_func.set(parameter, eval_expr(arg_value, env));
             }
 
-            eval_statements(body, &mut env_func)
+            eval_return_scope(body, &mut env_func)
         },
     }
 }
@@ -126,7 +126,9 @@ fn eval_statement(statement: Statement, env: &mut Env) -> Object {
     }
 }
 
-pub fn eval_statements(statements: Vec<Statement>, env: &mut Env) -> Object {
+/// similar to eval_return_scope but doesn't unwrap Return types
+/// useful for if-else blocks where the return should return from the parent scope as well
+fn eval_statements(statements: Vec<Statement>, env: &mut Env) -> Object {
     let mut result = Object::Null;
 
     for statement in statements {
@@ -140,10 +142,8 @@ pub fn eval_statements(statements: Vec<Statement>, env: &mut Env) -> Object {
     result
 }
 
-pub fn eval_program(statements: Vec<Statement>) -> Object {
-    let mut env = Env::new();
-
-    let result = eval_statements(statements, &mut env);
+pub fn eval_return_scope(statements: Vec<Statement>, env: &mut Env) -> Object {
+    let result = eval_statements(statements, env);
 
     match result {
         // unwrap Return type
@@ -254,13 +254,14 @@ mod tests {
         test_eval("let double = fn(x) { x * 2; }; double(5);", Object::Integer(10));
         test_eval("let add = fn(x, y) { x + y; }; add(5, 5);", Object::Integer(10));
         test_eval("let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", Object::Integer(20));
-//        test_eval("let add = fn(x, y) { return x + y; }; let three = add(1, 2); 5;", Object::Integer(5)); // return value inside the function should not cause the entire program to return
+        test_eval("let add = fn(x, y) { return x + y; }; let three = add(1, 2); 5;", Object::Integer(5)); // return value inside the function should not cause the entire program to return
     }
 
     fn test_eval(input: &str, expected: Object) {
         let mut tokens = lexer().parse(input.as_bytes()).unwrap();
         let ast = parse(&mut tokens);
-        let obj = eval_program(ast);
+        let mut env = Env::new();
+        let obj = eval_return_scope(ast, &mut env);
 
         assert_eq!(
             expected,
