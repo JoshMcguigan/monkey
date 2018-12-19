@@ -123,15 +123,11 @@ pub fn eval_program(statements: Vec<Statement>) -> Object {
 
     let result = eval_statements(statements, &mut env);
 
-    // if object is return type, unwrap it
-    if let &Object::Return(_) = &result {
-        match result {
-            Object::Return(res) => return *res,
-            _ => unreachable!(),
-        }
+    match result {
+        // unwrap Return type
+        Object::Return(res) => *res,
+        _ => result,
     }
-
-    result
 }
 
 #[cfg(test)]
