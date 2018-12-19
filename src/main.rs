@@ -7,6 +7,8 @@ use crate::lexer::lexer;
 mod eval;
 use crate::eval::{eval_return_scope, Object, Env};
 
+mod code;
+
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
