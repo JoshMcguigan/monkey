@@ -5,20 +5,21 @@ mod lexer;
 use crate::lexer::lexer;
 
 mod eval;
-use crate::eval::{eval_program, Object};
+use crate::eval::{eval_statements, Object, Env};
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 fn main() {
     let mut rl = Editor::<()>::new();
+    let mut env = Env::new();
     loop {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
                 let mut tokens = lexer().parse(line.as_bytes()).unwrap();
                 let ast = parse(&mut tokens);
-                display_object(eval_program(ast));
+                display_object(eval_statements(ast, &mut env));
             },
             Err(ReadlineError::Interrupted) => {
                 break

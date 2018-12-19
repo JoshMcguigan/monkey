@@ -4,7 +4,7 @@ use crate::parser::Prefix;
 use crate::parser::Operator;
 
 mod env;
-use self::env::Env;
+pub use self::env::Env;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -97,14 +97,14 @@ fn eval_statement(statement: Statement, env: &mut Env) -> Object {
         Statement::Expression(expr) => eval_expr(expr, env),
         Statement::Let{name, value} => {
             let value = eval_expr(value, env);
-            env.set(name, value);
-            Object::Null
+            env.set(name, value.clone());
+            value
         },
         Statement::Return{value: expr} => Object::Return(Box::new(eval_expr(expr, env))),
     }
 }
 
-fn eval_statements(statements: Vec<Statement>, env: &mut Env) -> Object {
+pub fn eval_statements(statements: Vec<Statement>, env: &mut Env) -> Object {
     let mut result = Object::Null;
 
     for statement in statements {
