@@ -1,13 +1,13 @@
 use crate::lexer::Token;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let{ name: String, value: Expr},
     Return{ value: Expr },
     Expression(Expr),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Const(i32),
     Boolean(bool),
@@ -19,13 +19,13 @@ pub enum Expr {
     Call{function: Box<Expr>, arguments: Vec<Expr>},
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Prefix {
     Bang,
     Minus,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Plus,
     Minus,

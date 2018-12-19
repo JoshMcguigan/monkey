@@ -39,6 +39,7 @@ fn display_object(obj: Object) {
     match obj {
         Object::Integer(num) => println!("{}", num),
         Object::Boolean(val) => println!("{}", val),
+        Object::Function{parameters: _, body: _} => println!("function"),
         Object::Null => println!("null"),
         Object::Return(obj) => display_object(*obj),
     }

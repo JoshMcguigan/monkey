@@ -12,6 +12,7 @@ pub enum Object {
     Boolean(bool),
     Null,
     Return(Box<Object>),
+    Function{parameters: Vec<String>, body: Vec<Statement>}
 }
 
 fn eval_expr(expression: Expr, env: &mut Env) -> Object {
@@ -88,7 +89,28 @@ fn eval_expr(expression: Expr, env: &mut Env) -> Object {
             }
         },
         Expr::Ident(name) => env.get(&name).expect("attempted access to invalid binding"),
-        _ => panic!("eval expr not implemented for this type")
+        Expr::Function{parameters, body} => Object::Function {parameters, body},
+        Expr::Call{function, arguments} => {
+            let (parameters, body) = match *function {
+                Expr::Ident(func_name) => {
+                    match env.get(&func_name).expect("tried to call function which was not defined") {
+                        Object::Function {parameters, body} => (parameters, body),
+                        _ => panic!("attempted to call non-function"),
+                    }
+                }
+                Expr::Function {parameters, body} => (parameters, body),
+                _ => panic!("attempted to call non-function"),
+            };
+
+            assert_eq!(parameters.len(), arguments.len(), "called function with wrong number of parameters");
+
+            let mut env_func = Env::new();
+            for (parameter, arg_value) in parameters.into_iter().zip(arguments.into_iter()) {
+                env_func.set(parameter, eval_expr(arg_value, env));
+            }
+
+            eval_statements(body, &mut env_func)
+        },
     }
 }
 
@@ -219,6 +241,20 @@ mod tests {
         test_eval("let a = 5 * 5; let b = a; b;", Object::Integer(25));
         test_eval("let a = 5; let b = a; let c = a + b + 5; c;", Object::Integer(15));
         test_eval("let a = 10;", Object::Integer(10)); // useful for repl
+    }
+
+    #[test]
+    fn eval_function() {
+        test_eval("fn(x) { x; };", Object::Function {
+            parameters: vec![String::from("x")],
+            body: vec![Statement::Expression(Expr::Ident(String::from("x")))]
+        });
+        test_eval("let identity = fn(x) { x; }; identity(5);", Object::Integer(5));
+        test_eval("let identity = fn(x) { return x; }; identity(5);", Object::Integer(5));
+        test_eval("let double = fn(x) { x * 2; }; double(5);", Object::Integer(10));
+        test_eval("let add = fn(x, y) { x + y; }; add(5, 5);", Object::Integer(10));
+        test_eval("let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", Object::Integer(20));
+//        test_eval("let add = fn(x, y) { return x + y; }; let three = add(1, 2); 5;", Object::Integer(5)); // return value inside the function should not cause the entire program to return
     }
 
     fn test_eval(input: &str, expected: Object) {
