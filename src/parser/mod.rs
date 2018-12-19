@@ -10,6 +10,7 @@ pub enum Statement {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Const(i32),
+    String(String),
     Boolean(bool),
     Ident(String),
     Prefix{prefix: Prefix, value: Box<Expr>},
@@ -195,6 +196,7 @@ fn parse_expression(input: &mut Vec<Token>, precedence: Precedence) -> Expr {
                 body,
             }
         },
+        Token::STRING(string) => Expr::String(string),
         _ => panic!("parse error at expression"),
     };
 
@@ -313,6 +315,20 @@ mod tests {
         assert_eq!(
             vec![
                 Statement::Expression(Expr::Const(5)),
+            ],
+            ast
+        );
+    }
+
+    #[test]
+    fn parse_expression_statement_string() {
+        let input = r#" "foo bar";"#;
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
+
+        assert_eq!(
+            vec![
+                Statement::Expression(Expr::String(String::from("foo bar"))),
             ],
             ast
         );

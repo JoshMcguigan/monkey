@@ -9,6 +9,7 @@ pub use self::env::Env;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
     Integer(i32),
+    String(String),
     Boolean(bool),
     Null,
     Return(Box<Object>),
@@ -17,6 +18,7 @@ pub enum Object {
 
 fn eval_expr(expression: Expr, env: &mut Env) -> Object {
     match expression {
+        Expr::String(string) => Object::String(string),
         Expr::Const(num) => Object::Integer(num),
         Expr::Boolean(val) => Object::Boolean(val),
         Expr::Prefix { prefix: Prefix::Bang, value: expr } => {
@@ -34,7 +36,8 @@ fn eval_expr(expression: Expr, env: &mut Env) -> Object {
         Expr::Infix { left, operator: Operator::Plus, right } => {
             match (eval_expr(*left, env), eval_expr(*right, env)) {
                 (Object::Integer(left), Object::Integer(right)) => Object::Integer(left + right),
-                _ => panic!("plus operator only valid on integer types")
+                (Object::String(left), Object::String(right)) => Object::String(left + &right),
+                _ => panic!("plus operator used on invalid types")
             }
         },
         Expr::Infix { left, operator: Operator::Minus, right } => {
@@ -164,6 +167,11 @@ mod tests {
     }
 
     #[test]
+    fn eval_string_literal() {
+        test_eval(r#""foo bar";"#, Object::String(String::from("foo bar")));
+    }
+
+    #[test]
     fn eval_bool() {
         test_eval("true;", Object::Boolean(true));
         test_eval("false;", Object::Boolean(false));
@@ -195,6 +203,11 @@ mod tests {
         test_eval("true == true;", Object::Boolean(true));
         test_eval("true != true;", Object::Boolean(false));
         test_eval("(1 > 2) == false;", Object::Boolean(true));
+    }
+
+    #[test]
+    fn eval_infix_string() {
+        test_eval(r#""hello " + "world";"#, Object::String(String::from("hello world")));
     }
 
     #[test]

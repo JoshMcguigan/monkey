@@ -8,6 +8,7 @@ pub enum Token {
     EOF,
     IDENT(String),
     INT(i32),
+    STRING(String), // string literal, let x = "my string";
     ASSIGN,
     PLUS,
     MINUS,
@@ -48,6 +49,14 @@ fn lex_ident<'a>() -> Parser<'a, u8, Token> {
         .map(|ident| Token::IDENT(ident) )
 }
 
+fn lex_string<'a>() -> Parser<'a, u8, Token> {
+    seq(b"\"") *
+    is_a(|byte| char::from(byte) != '"') // capture until end quote
+        .repeat(0..).convert(String::from_utf8)
+        .map(|string| Token::STRING(string) )
+    - seq(b"\"")
+}
+
 fn lex_int<'a>() -> Parser<'a, u8, Token> {
     is_a(|byte| char::from(byte).is_numeric())
         .repeat(1..)
@@ -66,6 +75,7 @@ fn lex_token<'a>() -> Parser<'a, u8, Token> {
         | lex_keyword("true", Token::TRUE)
         | lex_keyword("false", Token::FALSE)
         | lex_ident()
+        | lex_string()
         | lex_int()
         | seq(b"==").map(|_| Token::EQ)
         | seq(b"!=").map(|_| Token::NOT_EQ)
@@ -298,6 +308,24 @@ mod tests {
                 Token::INT(10),
                 Token::NOT_EQ,
                 Token::INT(9),
+                Token::SEMICOLON,
+                Token::EOF,
+            ],
+            tokens.unwrap()
+        );
+    }
+
+    #[test]
+    fn lex_string() {
+        let input = r#"let words = "foo bar";"#;
+        let tokens = lexer().parse(input.as_bytes());
+
+        assert_eq!(
+            vec![
+                Token::LET,
+                Token::IDENT(String::from("words")),
+                Token::ASSIGN,
+                Token::STRING(String::from("foo bar")),
                 Token::SEMICOLON,
                 Token::EOF,
             ],
