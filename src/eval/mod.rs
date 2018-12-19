@@ -13,7 +13,7 @@ pub enum Object {
     Boolean(bool),
     Null,
     Return(Box<Object>),
-    Function{parameters: Vec<String>, body: Vec<Statement>}
+    Function{parameters: Vec<String>, body: Vec<Statement>},
 }
 
 fn eval_expr(expression: Expr, env: &mut Env) -> Object {
@@ -96,8 +96,12 @@ fn eval_expr(expression: Expr, env: &mut Env) -> Object {
         Expr::Call{function, arguments} => {
             let (parameters, body) = match *function {
                 Expr::Ident(func_name) => {
-                    match env.get(&func_name).expect("tried to call function which was not defined") {
-                        Object::Function {parameters, body} => (parameters, body),
+                    match env.get(&func_name) {
+                        Some(Object::Function {parameters, body}) => (parameters, body),
+                        None => {
+                            let arguments = arguments.into_iter().map(|expr| eval_expr(expr, env)).collect();
+                            return eval_builtin(&func_name, arguments).expect("error calling function");
+                        },
                         _ => panic!("attempted to call non-function"),
                     }
                 }
@@ -105,6 +109,7 @@ fn eval_expr(expression: Expr, env: &mut Env) -> Object {
                 _ => panic!("attempted to call non-function"),
             };
 
+            // run user defined function
             assert_eq!(parameters.len(), arguments.len(), "called function with wrong number of parameters");
 
             let mut env_func = Env::new();
@@ -114,6 +119,13 @@ fn eval_expr(expression: Expr, env: &mut Env) -> Object {
 
             eval_return_scope(body, &mut env_func)
         },
+    }
+}
+
+fn eval_builtin(func_name: &str, arguments: Vec<Object>) -> Option<Object> {
+    match (func_name, arguments.as_slice()) {
+        ("len", [Object::String(string)]) => Some(Object::Integer(string.len() as i32)),
+        _ => None,
     }
 }
 
@@ -280,5 +292,10 @@ mod tests {
             expected,
             obj
         );
+    }
+
+    #[test]
+    fn eval_builtin_len() {
+        test_eval(r#"len("hello");"#, Object::Integer(5));
     }
 }

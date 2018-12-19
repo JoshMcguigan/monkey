@@ -46,7 +46,7 @@ enum Precedence {
     Sum,         // +
     Product,     // *
     Prefix,      // -X or !X
-    Call,        // myFunction(X)
+    // Call,        // myFunction(X) - not used
 }
 
 pub fn parse(input: &mut Vec<Token>) -> Vec<Statement> {
@@ -361,7 +361,7 @@ mod tests {
 
     #[test]
     fn precedence() {
-        assert!(Precedence::Lowest < Precedence::Call);
+        assert!(Precedence::Lowest < Precedence::Prefix);
     }
 
     #[test]
