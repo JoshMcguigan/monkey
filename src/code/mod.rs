@@ -1,5 +1,6 @@
 pub enum OpCode {
     OpConstant(u16), // args: pointer to constant table
+    OpAdd,
 }
 
 fn convert_u16_to_two_u8s_be(integer: u16) -> [u8; 2] {
@@ -12,12 +13,13 @@ pub fn convert_two_u8s_be_to_usize(int1: u8, int2: u8) -> usize {
 pub fn make_op(op: OpCode) -> Vec<u8> {
     match op {
         OpCode::OpConstant(arg) => {
-            let op_code = 0u8;
+            let op_code = 0x01;
             let mut output = vec![op_code];
             output.extend(&convert_u16_to_two_u8s_be(arg));
 
             output
         },
+        OpCode::OpAdd => vec![0x02]
     }
 }
 
@@ -28,8 +30,16 @@ mod tests {
     #[test]
     fn make_op_constant() {
         assert_eq!(
-            vec![0u8, 255, 254],
+            vec![0x01, 255, 254],
             make_op(OpCode::OpConstant(65534))
+        );
+    }
+
+    #[test]
+    fn make_op_add() {
+        assert_eq!(
+            vec![0x02],
+            make_op(OpCode::OpAdd)
         );
     }
 }

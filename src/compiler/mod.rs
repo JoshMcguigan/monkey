@@ -2,6 +2,7 @@ use crate::eval::Object;
 use crate::parser::{Statement, Expr, parse};
 use crate::code::{make_op, OpCode};
 use crate::lexer::lexer;
+use crate::parser::Operator;
 
 #[derive(Debug, PartialEq)]
 pub struct ByteCode {
@@ -39,6 +40,10 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
         Expr::Infix { left, operator, right } => {
             compile_expression(*left, byte_code);
             compile_expression(*right, byte_code);
+            match operator {
+                Operator::Plus => add_instruction(OpCode::OpAdd, byte_code),
+                _ => panic!("unsupported infix operator"),
+            };
         },
         _ => panic!("unsupported expression"),
     }
@@ -76,6 +81,7 @@ mod tests {
         let mut expected_instructions = vec![];
         expected_instructions.extend(make_op(OpCode::OpConstant(0)));
         expected_instructions.extend(make_op(OpCode::OpConstant(1)));
+        expected_instructions.extend(make_op(OpCode::OpAdd));
 
         assert_eq!(
             ByteCode {
