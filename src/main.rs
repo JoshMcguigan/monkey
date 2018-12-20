@@ -9,6 +9,7 @@ use crate::eval::{eval_return_scope, Object, Env};
 
 mod code;
 mod compiler;
+mod vm;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;

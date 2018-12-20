@@ -1,11 +1,12 @@
 use crate::eval::Object;
-use crate::parser::{Statement, Expr};
+use crate::parser::{Statement, Expr, parse};
 use crate::code::{make_op, OpCode};
+use crate::lexer::lexer;
 
 #[derive(Debug, PartialEq)]
-struct ByteCode {
-    instructions: Vec<u8>,
-    constants: Vec<Object>
+pub struct ByteCode {
+    pub instructions: Vec<u8>,
+    pub constants: Vec<Object>
 }
 
 impl ByteCode {
@@ -57,18 +58,20 @@ fn compile(ast: Vec<Statement>) -> ByteCode {
     byte_code
 }
 
+pub fn compile_from_source(input: &str) -> ByteCode {
+    let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+    let ast = parse(&mut tokens);
+    compile(ast)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer::lexer;
-    use crate::parser::parse;
 
     #[test]
     fn compile_add() {
         let input = "1 + 2;";
-        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
-        let ast = parse(&mut tokens);
-        let byte_code = compile(ast);
+        let byte_code = compile_from_source(input);
 
         let mut expected_instructions = vec![];
         expected_instructions.extend(make_op(OpCode::OpConstant(0)));

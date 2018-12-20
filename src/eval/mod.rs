@@ -8,10 +8,10 @@ pub use self::env::Env;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
+    Null,
     Integer(i32),
     String(String),
     Boolean(bool),
-    Null,
     Return(Box<Object>),
     Function{parameters: Vec<String>, body: Vec<Statement>},
 }
