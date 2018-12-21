@@ -23,11 +23,6 @@ impl VM {
         }
     }
 
-    fn stack_peek(&self) -> &Object {
-        // ignoring the potential of an empty stack
-        &self.stack[self.sp - 1]
-    }
-
     fn run(&mut self) {
         let mut ip = 0; // instruction pointer
 
@@ -48,7 +43,11 @@ impl VM {
                         (Object::Integer(right), Object::Integer(left)) => self.push(Object::Integer(left + right)),
                         _ => panic!("unhandled argument types to OpAdd"),
                     }
-                }
+                },
+                0x03 => {
+                    // OpPop
+                    self.pop();
+                },
                 _ => panic!("unhandled instruction"),
             }
         }
@@ -56,15 +55,21 @@ impl VM {
 
     fn push(&mut self, obj: Object) {
         self.stack[self.sp] = obj;
-        self.sp += 1; // ignoring the potential stack overflow here
+        self.sp += 1; // ignoring the potential stack overflow
     }
 
     fn pop(&mut self) -> Object {
-        // ignoring the potential of stack underflow here
-        let obj = unsafe { std::mem::replace(&mut self.stack[self.sp - 1], std::mem::zeroed()) };
+        // ignoring the potential of stack underflow
+        // cloning rather than mem::replace to support the last_popped method for testing
+        let obj = self.stack[self.sp - 1].clone();
         self.sp -= 1;
 
         obj
+    }
+
+    fn last_popped(&self) -> &Object {
+        // the stack pointer points to the next "free" space, which also holds the most recently popped element
+        &self.stack[self.sp]
     }
 }
 
@@ -81,6 +86,6 @@ mod tests {
         let mut vm = VM::new(byte_code);
         vm.run();
 
-        assert_eq!(&Object::Integer(3), vm.stack_peek());
+        assert_eq!(&Object::Integer(3), vm.last_popped());
     }
 }

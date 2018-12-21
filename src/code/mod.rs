@@ -1,6 +1,7 @@
 pub enum OpCode {
     OpConstant(u16), // args: pointer to constant table
     OpAdd,
+    OpPop,
 }
 
 fn convert_u16_to_two_u8s_be(integer: u16) -> [u8; 2] {
@@ -19,7 +20,8 @@ pub fn make_op(op: OpCode) -> Vec<u8> {
 
             output
         },
-        OpCode::OpAdd => vec![0x02]
+        OpCode::OpAdd => vec![0x02],
+        OpCode::OpPop => vec![0x03],
     }
 }
 
@@ -40,6 +42,14 @@ mod tests {
         assert_eq!(
             vec![0x02],
             make_op(OpCode::OpAdd)
+        );
+    }
+
+    #[test]
+    fn make_op_pop() {
+        assert_eq!(
+            vec![0x03],
+            make_op(OpCode::OpPop)
         );
     }
 }

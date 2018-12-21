@@ -56,7 +56,12 @@ fn compile(ast: Vec<Statement>) -> ByteCode {
         match statement {
             Statement::Let { .. } => {},
             Statement::Return { .. } => {},
-            Statement::Expression(expr) => compile_expression(expr, &mut byte_code),
+            Statement::Expression(expr) => {
+                compile_expression(expr, &mut byte_code);
+
+                // pop one element from the stack after each expression statement to clean up
+                add_instruction(OpCode::OpPop, &mut byte_code);
+            },
         }
     }
 
@@ -82,6 +87,7 @@ mod tests {
         expected_instructions.extend(make_op(OpCode::OpConstant(0)));
         expected_instructions.extend(make_op(OpCode::OpConstant(1)));
         expected_instructions.extend(make_op(OpCode::OpAdd));
+        expected_instructions.extend(make_op(OpCode::OpPop));
 
         assert_eq!(
             ByteCode {
