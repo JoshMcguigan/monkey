@@ -7,6 +7,7 @@ pub enum OpCode {
     OpDiv,
     OpTrue,
     OpFalse,
+    OpEquals,
 }
 
 fn convert_u16_to_two_u8s_be(integer: u16) -> [u8; 2] {
@@ -32,6 +33,7 @@ pub fn make_op(op: OpCode) -> Vec<u8> {
         OpCode::OpDiv => vec![0x06],
         OpCode::OpTrue => vec![0x07],
         OpCode::OpFalse => vec![0x08],
+        OpCode::OpEquals => vec![0x09],
     }
 }
 

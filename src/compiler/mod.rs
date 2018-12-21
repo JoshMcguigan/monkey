@@ -45,6 +45,7 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
                 Operator::Minus => add_instruction(OpCode::OpSub, byte_code),
                 Operator::Multiply => add_instruction(OpCode::OpMul, byte_code),
                 Operator::Divide => add_instruction(OpCode::OpDiv, byte_code),
+                Operator::Equals => add_instruction(OpCode::OpEquals, byte_code),
                 _ => panic!("unsupported infix operator"),
             };
         },
