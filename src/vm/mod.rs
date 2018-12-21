@@ -85,6 +85,14 @@ impl VM {
                         _ => panic!("unhandled argument types to OpEquals"),
                     }
                 },
+                0x0A => {
+                    // OpNotEquals
+                    match (self.pop(), self.pop()) {
+                        (Object::Integer(right), Object::Integer(left)) => self.push(Object::Boolean(left != right)),
+                        (Object::Boolean(right), Object::Boolean(left)) => self.push(Object::Boolean(left != right)),
+                        _ => panic!("unhandled argument types to OpNotEquals"),
+                    }
+                },
                 _ => panic!("unhandled instruction"),
             }
         }
@@ -135,6 +143,14 @@ mod tests {
         assert_last_popped("1 == 2;", Object::Boolean(false));
         assert_last_popped("true == true;", Object::Boolean(true));
         assert_last_popped("true == false;", Object::Boolean(false));
+    }
+
+    #[test]
+    fn run_not_equals() {
+        assert_last_popped("1 != 1;", Object::Boolean(false));
+        assert_last_popped("1 != 2;", Object::Boolean(true));
+        assert_last_popped("true != true;", Object::Boolean(false));
+        assert_last_popped("true != false;", Object::Boolean(true));
     }
 
     fn assert_last_popped(input: &str, obj: Object) {
