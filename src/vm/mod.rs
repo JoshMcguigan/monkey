@@ -166,6 +166,12 @@ mod tests {
         assert_last_popped("1 > 2;", Object::Boolean(false));
     }
 
+    #[test]
+    fn run_less_than() {
+        assert_last_popped("1 < 0;", Object::Boolean(false));
+        assert_last_popped("1 < 2;", Object::Boolean(true));
+    }
+
     fn assert_last_popped(input: &str, obj: Object) {
         let byte_code = compile_from_source(input);
 

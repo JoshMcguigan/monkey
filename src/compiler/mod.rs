@@ -38,8 +38,19 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
             add_instruction(OpCode::OpConstant(const_index), byte_code);
         },
         Expr::Infix { left, operator, right } => {
-            compile_expression(*left, byte_code);
-            compile_expression(*right, byte_code);
+
+            match &operator {
+                Operator::LessThan => {
+                    // flip left/right order so that less than statements can be re-written as greater than statements
+                    // this allows the vm to only support a greater than instruction
+                    compile_expression(*right, byte_code);
+                    compile_expression(*left, byte_code);
+                },
+                _ => {
+                    compile_expression(*left, byte_code);
+                    compile_expression(*right, byte_code);
+                }
+            }
             match operator {
                 Operator::Plus => add_instruction(OpCode::OpAdd, byte_code),
                 Operator::Minus => add_instruction(OpCode::OpSub, byte_code),
@@ -47,8 +58,11 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
                 Operator::Divide => add_instruction(OpCode::OpDiv, byte_code),
                 Operator::Equals => add_instruction(OpCode::OpEquals, byte_code),
                 Operator::NotEquals => add_instruction(OpCode::OpNotEquals, byte_code),
-                Operator::GreaterThan => add_instruction(OpCode::OpGreaterThan, byte_code),
-                _ => panic!("unsupported infix operator"),
+                Operator::GreaterThan | Operator::LessThan => {
+                    // greater than and less than can share one op-code because the
+                    //    order of the operands are flipped when they are pushed on to the stack
+                    add_instruction(OpCode::OpGreaterThan, byte_code)
+                },
             };
         },
         Expr::Boolean(true) => {add_instruction(OpCode::OpTrue, byte_code);},
