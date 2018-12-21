@@ -93,6 +93,13 @@ impl VM {
                         _ => panic!("unhandled argument types to OpNotEquals"),
                     }
                 },
+                0x0B => {
+                    // OpGreaterThan
+                    match (self.pop(), self.pop()) {
+                        (Object::Integer(right), Object::Integer(left)) => self.push(Object::Boolean(left > right)),
+                        _ => panic!("unhandled argument types to OpGreaterThan"),
+                    }
+                },
                 _ => panic!("unhandled instruction"),
             }
         }
@@ -151,6 +158,12 @@ mod tests {
         assert_last_popped("1 != 2;", Object::Boolean(true));
         assert_last_popped("true != true;", Object::Boolean(false));
         assert_last_popped("true != false;", Object::Boolean(true));
+    }
+
+    #[test]
+    fn run_greater_than() {
+        assert_last_popped("1 > 0;", Object::Boolean(true));
+        assert_last_popped("1 > 2;", Object::Boolean(false));
     }
 
     fn assert_last_popped(input: &str, obj: Object) {
