@@ -48,6 +48,8 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
                 _ => panic!("unsupported infix operator"),
             };
         },
+        Expr::Boolean(true) => {add_instruction(OpCode::OpTrue, byte_code);},
+        Expr::Boolean(false) => {add_instruction(OpCode::OpFalse, byte_code);},
         _ => panic!("unsupported expression"),
     }
 }

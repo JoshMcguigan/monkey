@@ -69,6 +69,14 @@ impl VM {
                         _ => panic!("unhandled argument types to OpDiv"),
                     }
                 },
+                0x07 => {
+                    // OpTrue
+                    self.push(Object::Boolean(true));
+                },
+                0x08 => {
+                    // OpFalse
+                    self.push(Object::Boolean(false));
+                },
                 _ => panic!("unhandled instruction"),
             }
         }
@@ -105,6 +113,12 @@ mod tests {
         assert_last_popped("1 - 2;", Object::Integer(-1));
         assert_last_popped("3 * 2;", Object::Integer(6));
         assert_last_popped("6 / 2;", Object::Integer(3));
+    }
+
+    #[test]
+    fn run_bool() {
+        assert_last_popped("true;", Object::Boolean(true));
+        assert_last_popped("false;", Object::Boolean(false));
     }
 
     fn assert_last_popped(input: &str, obj: Object) {
