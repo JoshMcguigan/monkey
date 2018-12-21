@@ -3,6 +3,7 @@ use crate::parser::{Statement, Expr, parse};
 use crate::code::{make_op, OpCode};
 use crate::lexer::lexer;
 use crate::parser::Operator;
+use crate::parser::Prefix;
 
 #[derive(Debug, PartialEq)]
 pub struct ByteCode {
@@ -35,10 +36,9 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
     match expr {
         Expr::Const(num) => {
             let const_index = add_constant(Object::Integer(num), byte_code);
-            add_instruction(OpCode::OpConstant(const_index), byte_code);
+            add_instruction(OpCode::OpConstant(const_index), byte_code)
         },
         Expr::Infix { left, operator, right } => {
-
             match &operator {
                 Operator::LessThan => {
                     // flip left/right order so that less than statements can be re-written as greater than statements
@@ -63,12 +63,20 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
                     //    order of the operands are flipped when they are pushed on to the stack
                     add_instruction(OpCode::OpGreaterThan, byte_code)
                 },
-            };
+            }
         },
-        Expr::Boolean(true) => {add_instruction(OpCode::OpTrue, byte_code);},
-        Expr::Boolean(false) => {add_instruction(OpCode::OpFalse, byte_code);},
+        Expr::Prefix {prefix: Prefix::Minus, value} => {
+            compile_expression(*value, byte_code);
+            add_instruction(OpCode::OpMinus, byte_code)
+        },
+        Expr::Prefix {prefix: Prefix::Bang, value} => {
+            compile_expression(*value, byte_code);
+            add_instruction(OpCode::OpBang, byte_code)
+        },
+        Expr::Boolean(true) => add_instruction(OpCode::OpTrue, byte_code),
+        Expr::Boolean(false) => add_instruction(OpCode::OpFalse, byte_code),
         _ => panic!("unsupported expression"),
-    }
+    };
 }
 
 fn compile(ast: Vec<Statement>) -> ByteCode {

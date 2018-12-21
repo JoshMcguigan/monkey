@@ -100,6 +100,20 @@ impl VM {
                         _ => panic!("unhandled argument types to OpGreaterThan"),
                     }
                 },
+                0x0C => {
+                    // OpMinus
+                    match self.pop() {
+                        Object::Integer(num) => self.push(Object::Integer(-num)),
+                        _ => panic!("unhandled arg type to OpMinus"),
+                    }
+                },
+                0x0D => {
+                    // OpBang
+                    match self.pop() {
+                        Object::Boolean(bool) => self.push(Object::Boolean(!bool)),
+                        _ => panic!("unhandled arg type to OpBang"),
+                    }
+                },
                 _ => panic!("unhandled instruction"),
             }
         }
@@ -170,6 +184,13 @@ mod tests {
     fn run_less_than() {
         assert_last_popped("1 < 0;", Object::Boolean(false));
         assert_last_popped("1 < 2;", Object::Boolean(true));
+    }
+
+    #[test]
+    fn run_prefix() {
+        assert_last_popped("-1;", Object::Integer(-1));
+        assert_last_popped("!false;", Object::Boolean(true));
+
     }
 
     fn assert_last_popped(input: &str, obj: Object) {
