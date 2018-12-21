@@ -38,15 +38,36 @@ impl VM {
                     self.push(self.constants[const_index].clone());
                 },
                 0x02 => {
+                    // OpPop
+                    self.pop();
+                },
+                0x03 => {
                     // OpAdd
                     match (self.pop(), self.pop()) {
                         (Object::Integer(right), Object::Integer(left)) => self.push(Object::Integer(left + right)),
                         _ => panic!("unhandled argument types to OpAdd"),
                     }
                 },
-                0x03 => {
-                    // OpPop
-                    self.pop();
+                0x04 => {
+                    // OpSub
+                    match (self.pop(), self.pop()) {
+                        (Object::Integer(right), Object::Integer(left)) => self.push(Object::Integer(left - right)),
+                        _ => panic!("unhandled argument types to OpSub"),
+                    }
+                },
+                0x05 => {
+                    // OpMul
+                    match (self.pop(), self.pop()) {
+                        (Object::Integer(right), Object::Integer(left)) => self.push(Object::Integer(left * right)),
+                        _ => panic!("unhandled argument types to OpMul"),
+                    }
+                },
+                0x06 => {
+                    // OpDiv
+                    match (self.pop(), self.pop()) {
+                        (Object::Integer(right), Object::Integer(left)) => self.push(Object::Integer(left / right)),
+                        _ => panic!("unhandled argument types to OpDiv"),
+                    }
                 },
                 _ => panic!("unhandled instruction"),
             }
@@ -79,13 +100,19 @@ mod tests {
     use crate::compiler::compile_from_source;
 
     #[test]
-    fn run_infix_add() {
-        let input = "1 + 2;";
+    fn run_infix() {
+        assert_last_popped("1 + 2;", Object::Integer(3));
+        assert_last_popped("1 - 2;", Object::Integer(-1));
+        assert_last_popped("3 * 2;", Object::Integer(6));
+        assert_last_popped("6 / 2;", Object::Integer(3));
+    }
+
+    fn assert_last_popped(input: &str, obj: Object) {
         let byte_code = compile_from_source(input);
 
         let mut vm = VM::new(byte_code);
         vm.run();
 
-        assert_eq!(&Object::Integer(3), vm.last_popped());
+        assert_eq!(&obj, vm.last_popped());
     }
 }

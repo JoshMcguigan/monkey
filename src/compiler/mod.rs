@@ -42,6 +42,9 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
             compile_expression(*right, byte_code);
             match operator {
                 Operator::Plus => add_instruction(OpCode::OpAdd, byte_code),
+                Operator::Minus => add_instruction(OpCode::OpSub, byte_code),
+                Operator::Multiply => add_instruction(OpCode::OpMul, byte_code),
+                Operator::Divide => add_instruction(OpCode::OpDiv, byte_code),
                 _ => panic!("unsupported infix operator"),
             };
         },
@@ -79,15 +82,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn compile_add() {
-        let input = "1 + 2;";
-        let byte_code = compile_from_source(input);
+    fn compile_infix() {
+        compile_infix_template("+", OpCode::OpAdd);
+        compile_infix_template("-", OpCode::OpSub);
+        compile_infix_template("*", OpCode::OpMul);
+        compile_infix_template("/", OpCode::OpDiv);
+    }
 
-        let mut expected_instructions = vec![];
-        expected_instructions.extend(make_op(OpCode::OpConstant(0)));
-        expected_instructions.extend(make_op(OpCode::OpConstant(1)));
-        expected_instructions.extend(make_op(OpCode::OpAdd));
-        expected_instructions.extend(make_op(OpCode::OpPop));
+    fn compile_infix_template(infix_str: &str, op_code: OpCode) {
+        let input = format!("1 {} 2;", infix_str);
+        let byte_code = compile_from_source(&input);
+
+        let expected_instructions = vec![
+            OpCode::OpConstant(0),
+            OpCode::OpConstant(1),
+            op_code,
+            OpCode::OpPop
+        ]
+            .into_iter()
+            .flat_map(make_op)
+            .collect();
 
         assert_eq!(
             ByteCode {
