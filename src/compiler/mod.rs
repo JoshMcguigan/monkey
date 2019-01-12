@@ -94,6 +94,19 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
                 OpCode::OpJumpNotTrue(byte_code.instructions.len() as u16),
                 byte_code
             );
+            if !alternative.is_empty() {
+                let op_jump_position = byte_code.instructions.len();
+                add_instruction(OpCode::OpJump(9999), byte_code);
+                compile(alternative, byte_code);
+                if last_instruction_is_pop(byte_code) {
+                    remove_last_pop(byte_code);
+                }
+                change_op(
+                    op_jump_position,
+                    OpCode::OpJump(byte_code.instructions.len() as u16),
+                    byte_code
+                );
+            }
         },
         _ => panic!("unsupported expression"),
     };
@@ -187,6 +200,34 @@ mod tests {
             ByteCode {
                 instructions: expected_instructions,
                 constants: vec![Object::Integer(10), Object::Integer(3333)]
+            },
+            byte_code
+        );
+    }
+
+    #[test]
+    fn compile_if_else() {
+        let input = "if (true) { 10; } else { 20; }; 3333;";
+        let byte_code = compile_from_source(input);
+
+        let expected_instructions = vec![
+            OpCode::OpTrue, // 0000
+            OpCode::OpJumpNotTrue(7), // 0001
+            OpCode::OpConstant(0), // 0004
+            OpCode::OpJump(13), // 0007
+            OpCode::OpConstant(1), // 0010
+            OpCode::OpPop, // 0013
+            OpCode::OpConstant(2), // 0014
+            OpCode::OpPop, // 0017
+        ]
+            .into_iter()
+            .flat_map(make_op)
+            .collect();
+
+        assert_eq!(
+            ByteCode {
+                instructions: expected_instructions,
+                constants: vec![Object::Integer(10), Object::Integer(20), Object::Integer(3333)]
             },
             byte_code
         );
