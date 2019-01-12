@@ -114,6 +114,20 @@ impl VM {
                         _ => panic!("unhandled arg type to OpBang"),
                     }
                 },
+                0x0E => {
+                    // OpJumpNotTrue
+                    match self.pop() {
+                        Object::Boolean(true) => {
+                            ip += 2; // don't jump, but skip the jump address
+                        },
+                        Object::Boolean(false) => {
+                            let jump_address = convert_two_u8s_be_to_usize(self.instructions[ip], self.instructions[ip + 1]);
+                            ip = jump_address;
+                        },
+                        _ => panic!("unhandled arg type to OpJumpNotTrue"),
+                    }
+
+                }
                 _ => panic!("unhandled instruction"),
             }
         }
@@ -190,7 +204,11 @@ mod tests {
     fn run_prefix() {
         assert_last_popped("-1;", Object::Integer(-1));
         assert_last_popped("!false;", Object::Boolean(true));
+    }
 
+    #[test]
+    fn run_if() {
+        assert_last_popped("if (true) { 10; };", Object::Integer(10));
     }
 
     fn assert_last_popped(input: &str, obj: Object) {
