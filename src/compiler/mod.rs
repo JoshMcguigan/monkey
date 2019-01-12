@@ -32,11 +32,17 @@ fn add_instruction(op_code: OpCode, byte_code: &mut ByteCode) -> u16 {
     position_of_new_instruction
 }
 
+fn change_op(position: usize, op_code: OpCode, byte_code: &mut ByteCode) {
+    let op_bytes = make_op(op_code);
+
+    byte_code.instructions.splice(position..position+op_bytes.len(), op_bytes);
+}
+
 fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
     match expr {
         Expr::Const(num) => {
             let const_index = add_constant(Object::Integer(num), byte_code);
-            add_instruction(OpCode::OpConstant(const_index), byte_code)
+            add_instruction(OpCode::OpConstant(const_index), byte_code);
         },
         Expr::Infix { left, operator, right } => {
             match &operator {
@@ -63,45 +69,66 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
                     //    order of the operands are flipped when they are pushed on to the stack
                     add_instruction(OpCode::OpGreaterThan, byte_code)
                 },
-            }
+            };
         },
         Expr::Prefix {prefix: Prefix::Minus, value} => {
             compile_expression(*value, byte_code);
-            add_instruction(OpCode::OpMinus, byte_code)
+            add_instruction(OpCode::OpMinus, byte_code);
         },
         Expr::Prefix {prefix: Prefix::Bang, value} => {
             compile_expression(*value, byte_code);
-            add_instruction(OpCode::OpBang, byte_code)
+            add_instruction(OpCode::OpBang, byte_code);
         },
-        Expr::Boolean(true) => add_instruction(OpCode::OpTrue, byte_code),
-        Expr::Boolean(false) => add_instruction(OpCode::OpFalse, byte_code),
+        Expr::Boolean(true) => { add_instruction(OpCode::OpTrue, byte_code); },
+        Expr::Boolean(false) => { add_instruction(OpCode::OpFalse, byte_code); },
+        Expr::If {condition, consequence, alternative} => {
+            compile_expression(*condition, byte_code);
+            let op_jump_position = byte_code.instructions.len();
+            add_instruction(OpCode::OpJumpNotTrue(9999), byte_code);
+            compile(consequence, byte_code);
+            if last_instruction_is_pop(byte_code) {
+                remove_last_pop(byte_code);
+            }
+            change_op(
+                op_jump_position,
+                OpCode::OpJumpNotTrue(byte_code.instructions.len() as u16),
+                byte_code
+            );
+        },
         _ => panic!("unsupported expression"),
     };
 }
 
-fn compile(ast: Vec<Statement>) -> ByteCode {
-    let mut byte_code = ByteCode::new();
+fn last_instruction_is_pop(byte_code: &ByteCode) -> bool {
+    byte_code.instructions.last() == Some(&make_op(OpCode::OpPop)[0])
+}
 
+fn remove_last_pop(byte_code: &mut ByteCode) {
+    byte_code.instructions.pop();
+}
+
+fn compile(ast: Vec<Statement>, byte_code: &mut ByteCode) {
     for statement in ast {
         match statement {
             Statement::Let { .. } => {},
             Statement::Return { .. } => {},
             Statement::Expression(expr) => {
-                compile_expression(expr, &mut byte_code);
+                compile_expression(expr, byte_code);
 
                 // pop one element from the stack after each expression statement to clean up
-                add_instruction(OpCode::OpPop, &mut byte_code);
+                add_instruction(OpCode::OpPop, byte_code);
             },
         }
     }
-
-    byte_code
 }
 
 pub fn compile_from_source(input: &str) -> ByteCode {
     let mut tokens = lexer().parse(input.as_bytes()).unwrap();
     let ast = parse(&mut tokens);
-    compile(ast)
+    let mut byte_code = ByteCode::new();
+    compile(ast, &mut byte_code);
+
+    byte_code
 }
 
 #[cfg(test)]
@@ -134,6 +161,32 @@ mod tests {
             ByteCode {
                 instructions: expected_instructions,
                 constants: vec![Object::Integer(1), Object::Integer(2)]
+            },
+            byte_code
+        );
+    }
+
+    #[test]
+    fn compile_if() {
+        let input = "if (true) { 10; }; 3333;";
+        let byte_code = compile_from_source(input);
+
+        let expected_instructions = vec![
+            OpCode::OpTrue, // 0000
+            OpCode::OpJumpNotTrue(7), // 0001
+            OpCode::OpConstant(0), // 0004
+            OpCode::OpPop, // 0007
+            OpCode::OpConstant(1), // 0008
+            OpCode::OpPop, // 0011
+        ]
+            .into_iter()
+            .flat_map(make_op)
+            .collect();
+
+        assert_eq!(
+            ByteCode {
+                instructions: expected_instructions,
+                constants: vec![Object::Integer(10), Object::Integer(3333)]
             },
             byte_code
         );

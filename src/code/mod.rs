@@ -12,6 +12,7 @@ pub enum OpCode {
     OpGreaterThan,
     OpMinus,
     OpBang,
+    OpJumpNotTrue(u16), // args: byte address to jump to
 }
 
 fn convert_u16_to_two_u8s_be(integer: u16) -> [u8; 2] {
@@ -42,6 +43,13 @@ pub fn make_op(op: OpCode) -> Vec<u8> {
         OpCode::OpGreaterThan => vec![0x0B],
         OpCode::OpMinus => vec![0x0C],
         OpCode::OpBang => vec![0x0D],
+        OpCode::OpJumpNotTrue(address) => {
+            let op_code = 0x0E;
+            let mut output = vec![op_code];
+            output.extend(&convert_u16_to_two_u8s_be(address));
+
+            output
+        },
     }
 }
 
