@@ -89,12 +89,19 @@ fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
             if last_instruction_is_pop(byte_code) {
                 remove_last_pop(byte_code);
             }
-            change_op(
-                op_jump_position,
-                OpCode::OpJumpNotTrue(byte_code.instructions.len() as u16),
-                byte_code
-            );
-            if !alternative.is_empty() {
+            if alternative.is_empty() {
+                change_op(
+                    op_jump_position,
+                    OpCode::OpJumpNotTrue(byte_code.instructions.len() as u16),
+                    byte_code
+                );
+            } else {
+                change_op(
+                    op_jump_position,
+                    OpCode::OpJumpNotTrue(byte_code.instructions.len() as u16 + 3), // plus three to account for extra jump at end of if block
+                    byte_code
+                );
+
                 let op_jump_position = byte_code.instructions.len();
                 add_instruction(OpCode::OpJump(9999), byte_code);
                 compile(alternative, byte_code);
@@ -207,12 +214,38 @@ mod tests {
 
     #[test]
     fn compile_if_else() {
+        let input = "if (true) { 10; } else { 20; };";
+        let byte_code = compile_from_source(input);
+
+        let expected_instructions = vec![
+            OpCode::OpTrue, // 0000
+            OpCode::OpJumpNotTrue(10), // 0001
+            OpCode::OpConstant(0), // 0004
+            OpCode::OpJump(13), // 0007
+            OpCode::OpConstant(1), // 0010
+            OpCode::OpPop, // 0013
+        ]
+            .into_iter()
+            .flat_map(make_op)
+            .collect();
+
+        assert_eq!(
+            ByteCode {
+                instructions: expected_instructions,
+                constants: vec![Object::Integer(10), Object::Integer(20)]
+            },
+            byte_code
+        );
+    }
+
+    #[test]
+    fn compile_if_else_extra_statement() {
         let input = "if (true) { 10; } else { 20; }; 3333;";
         let byte_code = compile_from_source(input);
 
         let expected_instructions = vec![
             OpCode::OpTrue, // 0000
-            OpCode::OpJumpNotTrue(7), // 0001
+            OpCode::OpJumpNotTrue(10), // 0001
             OpCode::OpConstant(0), // 0004
             OpCode::OpJump(13), // 0007
             OpCode::OpConstant(1), // 0010

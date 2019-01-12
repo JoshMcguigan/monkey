@@ -127,7 +127,12 @@ impl VM {
                         _ => panic!("unhandled arg type to OpJumpNotTrue"),
                     }
 
-                }
+                },
+                0x0F => {
+                    // OpJump
+                    let jump_address = convert_two_u8s_be_to_usize(self.instructions[ip], self.instructions[ip + 1]);
+                    ip = jump_address;
+                },
                 _ => panic!("unhandled instruction"),
             }
         }
@@ -209,6 +214,10 @@ mod tests {
     #[test]
     fn run_if() {
         assert_last_popped("if (true) { 10; };", Object::Integer(10));
+        assert_last_popped("if (true) { 10; }; 3333;", Object::Integer(3333));
+        assert_last_popped("if (true) { 10; } else { 20; };", Object::Integer(10));
+        assert_last_popped("if (true) { 10; } else { 20; }; 3333;", Object::Integer(3333));
+        assert_last_popped("if (false) { 10; } else { 20; };", Object::Integer(20));
     }
 
     fn assert_last_popped(input: &str, obj: Object) {
