@@ -134,6 +134,14 @@ impl Compiler {
                     );
                 }
             },
+            Expr::Ident(name) => {
+                match self.symbol_table.resolve(&name) {
+                    None => panic!("attempted to use undefined variable"),
+                    Some(index) => {
+                        self.add_instruction(OpCode::OpGetGlobal(index));
+                    },
+                }
+            },
             _ => panic!("unsupported expression"),
         };
     }
@@ -328,6 +336,30 @@ mod tests {
             ByteCode {
                 instructions: expected_instructions,
                 constants: vec![Object::Integer(1), Object::Integer(2),]
+            },
+            byte_code
+        );
+    }
+
+    #[test]
+    fn compile_let_get() {
+        let input = "let one = 1; one;";
+        let byte_code = compile_from_source(input);
+
+        let expected_instructions = vec![
+            OpCode::OpConstant(0),
+            OpCode::OpSetGlobal(0),
+            OpCode::OpGetGlobal(0),
+            OpCode::OpPop,
+        ]
+            .into_iter()
+            .flat_map(make_op)
+            .collect();
+
+        assert_eq!(
+            ByteCode {
+                instructions: expected_instructions,
+                constants: vec![Object::Integer(1),]
             },
             byte_code
         );

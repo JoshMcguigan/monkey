@@ -26,4 +26,8 @@ impl SymbolTable {
         index
     }
 
+    pub fn resolve(&self, name: &SymbolName) -> Option<SymbolIndex> {
+        self.store.get(name).map(|&index| index)
+    }
+
 }
