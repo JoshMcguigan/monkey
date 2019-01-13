@@ -130,8 +130,11 @@ fn remove_last_pop(byte_code: &mut ByteCode) {
 fn compile(ast: Vec<Statement>, byte_code: &mut ByteCode) {
     for statement in ast {
         match statement {
-            Statement::Let { .. } => {},
-            Statement::Return { .. } => {},
+            Statement::Let { name, value } => {
+                compile_expression(value, byte_code);
+                add_instruction(OpCode::OpSetGlobal(0), byte_code);
+            },
+            Statement::Return { .. } => unimplemented!(),
             Statement::Expression(expr) => {
                 compile_expression(expr, byte_code);
 
@@ -261,6 +264,28 @@ mod tests {
             ByteCode {
                 instructions: expected_instructions,
                 constants: vec![Object::Integer(10), Object::Integer(20), Object::Integer(3333)]
+            },
+            byte_code
+        );
+    }
+
+    #[test]
+    fn compile_let_single_var() {
+        let input = "let one = 1;";
+        let byte_code = compile_from_source(input);
+
+        let expected_instructions = vec![
+            OpCode::OpConstant(0),
+            OpCode::OpSetGlobal(0),
+        ]
+            .into_iter()
+            .flat_map(make_op)
+            .collect();
+
+        assert_eq!(
+            ByteCode {
+                instructions: expected_instructions,
+                constants: vec![Object::Integer(1),]
             },
             byte_code
         );

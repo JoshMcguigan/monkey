@@ -14,6 +14,7 @@ pub enum OpCode {
     OpBang,
     OpJumpNotTrue(u16), // args: byte address to jump to
     OpJump(u16), // args: byte address to jump to
+    OpSetGlobal(u16), // args: id of global
 }
 
 fn convert_u16_to_two_u8s_be(integer: u16) -> [u8; 2] {
@@ -55,6 +56,13 @@ pub fn make_op(op: OpCode) -> Vec<u8> {
             let op_code = 0x0F;
             let mut output = vec![op_code];
             output.extend(&convert_u16_to_two_u8s_be(address));
+
+            output
+        },
+        OpCode::OpSetGlobal(global_id) => {
+            let op_code = 0x10;
+            let mut output = vec![op_code];
+            output.extend(&convert_u16_to_two_u8s_be(global_id));
 
             output
         },
