@@ -5,6 +5,8 @@ use crate::lexer::lexer;
 use crate::parser::Operator;
 use crate::parser::Prefix;
 
+mod symbol_table;
+
 #[derive(Debug, PartialEq)]
 pub struct ByteCode {
     pub instructions: Vec<u8>,
@@ -286,6 +288,30 @@ mod tests {
             ByteCode {
                 instructions: expected_instructions,
                 constants: vec![Object::Integer(1),]
+            },
+            byte_code
+        );
+    }
+
+    #[test]
+    fn compile_let_multiple_var() {
+        let input = "let one = 1; let two = 2;";
+        let byte_code = compile_from_source(input);
+
+        let expected_instructions = vec![
+            OpCode::OpConstant(0),
+            OpCode::OpSetGlobal(0),
+            OpCode::OpConstant(1),
+            OpCode::OpSetGlobal(1),
+        ]
+            .into_iter()
+            .flat_map(make_op)
+            .collect();
+
+        assert_eq!(
+            ByteCode {
+                instructions: expected_instructions,
+                constants: vec![Object::Integer(1), Object::Integer(2),]
             },
             byte_code
         );
