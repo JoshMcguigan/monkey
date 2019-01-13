@@ -4,6 +4,7 @@ use crate::code::{make_op, OpCode};
 use crate::lexer::lexer;
 use crate::parser::Operator;
 use crate::parser::Prefix;
+use crate::compiler::symbol_table::SymbolTable;
 
 mod symbol_table;
 
@@ -24,12 +25,14 @@ impl ByteCode {
 
 struct Compiler {
     byte_code: ByteCode,
+    symbol_table: SymbolTable,
 }
 
 impl Compiler {
     fn compile_from_source(input: &str) -> ByteCode {
         let mut compiler = Compiler {
             byte_code: ByteCode::new(),
+            symbol_table: SymbolTable::new(),
         };
 
         let mut tokens = lexer().parse(input.as_bytes()).unwrap();
@@ -148,7 +151,8 @@ impl Compiler {
             match statement {
                 Statement::Let { name, value } => {
                     self.compile_expression(value);
-                    self.add_instruction(OpCode::OpSetGlobal(0));
+                    let symbol_index = self.symbol_table.define(name);
+                    self.add_instruction(OpCode::OpSetGlobal(symbol_index));
                 },
                 Statement::Return { .. } => unimplemented!(),
                 Statement::Expression(expr) => {
