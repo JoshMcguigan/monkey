@@ -4,10 +4,15 @@ use crate::code::convert_two_u8s_be_to_usize;
 
 const STACK_SIZE : usize = 2048;
 
+// the compiler can output any index up to the max u16 value
+//  but keeping an array of that size on the stack of our Rust VM causes trouble
+const GLOBAL_SIZE : usize = 2048;
+
 struct VM {
     instructions: Vec<u8>,
     constants: Vec<Object>,
     stack: [Object; STACK_SIZE],
+    globals: [Object; GLOBAL_SIZE],
     sp: usize, // stores the next FREE space on the stack
 }
 
@@ -16,9 +21,11 @@ impl VM {
         VM {
             instructions: byte_code.instructions,
             constants: byte_code.constants,
-            // we rely on the stack pointer to ensure we don't read uninitialized memory
+            // we rely on the stack pointer to ensure we don't read zeroed memory
             // this should have the same result as [Object::Null, STACK_SIZE] which is not allow because Object is not copy
             stack: unsafe { std::mem::zeroed() },
+            // we rely on compiler generating valid code to ensure we don't read zeroed memory
+            globals: unsafe { std::mem::zeroed() },
             sp: 0
         }
     }
@@ -133,6 +140,22 @@ impl VM {
                     let jump_address = convert_two_u8s_be_to_usize(self.instructions[ip], self.instructions[ip + 1]);
                     ip = jump_address;
                 },
+                0x10 => {
+                    // OpSetGlobal
+                    let global_index = convert_two_u8s_be_to_usize(self.instructions[ip], self.instructions[ip + 1]);
+                    ip += 2;
+
+                    let value = self.pop();
+
+                    self.globals[global_index] = value;
+                },
+                0x11 => {
+                    // OpGetGlobal
+                    let global_index = convert_two_u8s_be_to_usize(self.instructions[ip], self.instructions[ip + 1]);
+                    ip += 2;
+
+                    self.push(self.globals[global_index].clone());
+                },
                 _ => panic!("unhandled instruction"),
             }
         }
@@ -218,6 +241,12 @@ mod tests {
         assert_last_popped("if (true) { 10; } else { 20; };", Object::Integer(10));
         assert_last_popped("if (true) { 10; } else { 20; }; 3333;", Object::Integer(3333));
         assert_last_popped("if (false) { 10; } else { 20; };", Object::Integer(20));
+    }
+
+    #[test]
+    fn run_variable_declaration() {
+        assert_last_popped("let one = 1; one;", Object::Integer(1));
+        assert_last_popped("let one = 1; let two = one + one; one + two;", Object::Integer(3));
     }
 
     fn assert_last_popped(input: &str, obj: Object) {
