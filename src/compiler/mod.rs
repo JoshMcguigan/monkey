@@ -22,138 +22,150 @@ impl ByteCode {
     }
 }
 
-fn add_constant(obj: Object, byte_code: &mut ByteCode) -> u16 {
-    byte_code.constants.push(obj);
-    (byte_code.constants.len() - 1) as u16 // cast to u16 because that is the size of our constant pool index
+struct Compiler {
+    byte_code: ByteCode,
 }
 
-fn add_instruction(op_code: OpCode, byte_code: &mut ByteCode) -> u16 {
-    let position_of_new_instruction = byte_code.instructions.len() as u16;
-    byte_code.instructions.extend(make_op(op_code));
+impl Compiler {
+    fn compile_from_source(input: &str) -> ByteCode {
+        let mut compiler = Compiler {
+            byte_code: ByteCode::new(),
+        };
 
-    position_of_new_instruction
-}
+        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let ast = parse(&mut tokens);
+        compiler.compile_statements(ast);
 
-fn change_op(position: usize, op_code: OpCode, byte_code: &mut ByteCode) {
-    let op_bytes = make_op(op_code);
+        compiler.byte_code
+    }
 
-    byte_code.instructions.splice(position..position+op_bytes.len(), op_bytes);
-}
+    fn add_constant(&mut self, obj: Object) -> u16 {
+        self.byte_code.constants.push(obj);
+        (self.byte_code.constants.len() - 1) as u16 // cast to u16 because that is the size of our constant pool index
+    }
 
-fn compile_expression(expr: Expr, byte_code: &mut ByteCode) {
-    match expr {
-        Expr::Const(num) => {
-            let const_index = add_constant(Object::Integer(num), byte_code);
-            add_instruction(OpCode::OpConstant(const_index), byte_code);
-        },
-        Expr::Infix { left, operator, right } => {
-            match &operator {
-                Operator::LessThan => {
-                    // flip left/right order so that less than statements can be re-written as greater than statements
-                    // this allows the vm to only support a greater than instruction
-                    compile_expression(*right, byte_code);
-                    compile_expression(*left, byte_code);
-                },
-                _ => {
-                    compile_expression(*left, byte_code);
-                    compile_expression(*right, byte_code);
-                }
-            }
-            match operator {
-                Operator::Plus => add_instruction(OpCode::OpAdd, byte_code),
-                Operator::Minus => add_instruction(OpCode::OpSub, byte_code),
-                Operator::Multiply => add_instruction(OpCode::OpMul, byte_code),
-                Operator::Divide => add_instruction(OpCode::OpDiv, byte_code),
-                Operator::Equals => add_instruction(OpCode::OpEquals, byte_code),
-                Operator::NotEquals => add_instruction(OpCode::OpNotEquals, byte_code),
-                Operator::GreaterThan | Operator::LessThan => {
-                    // greater than and less than can share one op-code because the
-                    //    order of the operands are flipped when they are pushed on to the stack
-                    add_instruction(OpCode::OpGreaterThan, byte_code)
-                },
-            };
-        },
-        Expr::Prefix {prefix: Prefix::Minus, value} => {
-            compile_expression(*value, byte_code);
-            add_instruction(OpCode::OpMinus, byte_code);
-        },
-        Expr::Prefix {prefix: Prefix::Bang, value} => {
-            compile_expression(*value, byte_code);
-            add_instruction(OpCode::OpBang, byte_code);
-        },
-        Expr::Boolean(true) => { add_instruction(OpCode::OpTrue, byte_code); },
-        Expr::Boolean(false) => { add_instruction(OpCode::OpFalse, byte_code); },
-        Expr::If {condition, consequence, alternative} => {
-            compile_expression(*condition, byte_code);
-            let op_jump_position = byte_code.instructions.len();
-            add_instruction(OpCode::OpJumpNotTrue(9999), byte_code);
-            compile(consequence, byte_code);
-            if last_instruction_is_pop(byte_code) {
-                remove_last_pop(byte_code);
-            }
-            if alternative.is_empty() {
-                change_op(
-                    op_jump_position,
-                    OpCode::OpJumpNotTrue(byte_code.instructions.len() as u16),
-                    byte_code
-                );
-            } else {
-                change_op(
-                    op_jump_position,
-                    OpCode::OpJumpNotTrue(byte_code.instructions.len() as u16 + 3), // plus three to account for extra jump at end of if block
-                    byte_code
-                );
+    fn add_instruction(&mut self, op_code: OpCode) -> u16 {
+        let position_of_new_instruction = self.byte_code.instructions.len() as u16;
+        self.byte_code.instructions.extend(make_op(op_code));
 
-                let op_jump_position = byte_code.instructions.len();
-                add_instruction(OpCode::OpJump(9999), byte_code);
-                compile(alternative, byte_code);
-                if last_instruction_is_pop(byte_code) {
-                    remove_last_pop(byte_code);
-                }
-                change_op(
-                    op_jump_position,
-                    OpCode::OpJump(byte_code.instructions.len() as u16),
-                    byte_code
-                );
-            }
-        },
-        _ => panic!("unsupported expression"),
-    };
-}
+        position_of_new_instruction
+    }
 
-fn last_instruction_is_pop(byte_code: &ByteCode) -> bool {
-    byte_code.instructions.last() == Some(&make_op(OpCode::OpPop)[0])
-}
+    fn change_op(&mut self, position: usize, op_code: OpCode) {
+        let op_bytes = make_op(op_code);
 
-fn remove_last_pop(byte_code: &mut ByteCode) {
-    byte_code.instructions.pop();
-}
+        self.byte_code.instructions.splice(position..position+op_bytes.len(), op_bytes);
+    }
 
-fn compile(ast: Vec<Statement>, byte_code: &mut ByteCode) {
-    for statement in ast {
-        match statement {
-            Statement::Let { name, value } => {
-                compile_expression(value, byte_code);
-                add_instruction(OpCode::OpSetGlobal(0), byte_code);
+    fn compile_expression(&mut self, expr: Expr) {
+        match expr {
+            Expr::Const(num) => {
+                let const_index = self.add_constant(Object::Integer(num));
+                self.add_instruction(OpCode::OpConstant(const_index));
             },
-            Statement::Return { .. } => unimplemented!(),
-            Statement::Expression(expr) => {
-                compile_expression(expr, byte_code);
-
-                // pop one element from the stack after each expression statement to clean up
-                add_instruction(OpCode::OpPop, byte_code);
+            Expr::Infix { left, operator, right } => {
+                match &operator {
+                    Operator::LessThan => {
+                        // flip left/right order so that less than statements can be re-written as greater than statements
+                        // this allows the vm to only support a greater than instruction
+                        self.compile_expression(*right);
+                        self.compile_expression(*left);
+                    },
+                    _ => {
+                        self.compile_expression(*left);
+                        self.compile_expression(*right);
+                    }
+                }
+                match operator {
+                    Operator::Plus => self.add_instruction(OpCode::OpAdd),
+                    Operator::Minus => self.add_instruction(OpCode::OpSub),
+                    Operator::Multiply => self.add_instruction(OpCode::OpMul),
+                    Operator::Divide => self.add_instruction(OpCode::OpDiv),
+                    Operator::Equals => self.add_instruction(OpCode::OpEquals),
+                    Operator::NotEquals => self.add_instruction(OpCode::OpNotEquals),
+                    Operator::GreaterThan | Operator::LessThan => {
+                        // greater than and less than can share one op-code because the
+                        //    order of the operands are flipped when they are pushed on to the stack
+                        self.add_instruction(OpCode::OpGreaterThan)
+                    },
+                };
             },
+            Expr::Prefix {prefix: Prefix::Minus, value} => {
+                self.compile_expression(*value);
+                self.add_instruction(OpCode::OpMinus);
+            },
+            Expr::Prefix {prefix: Prefix::Bang, value} => {
+                self.compile_expression(*value);
+                self.add_instruction(OpCode::OpBang);
+            },
+            Expr::Boolean(true) => { self.add_instruction(OpCode::OpTrue); },
+            Expr::Boolean(false) => { self.add_instruction(OpCode::OpFalse); },
+            Expr::If {condition, consequence, alternative} => {
+                self.compile_expression(*condition);
+                let op_jump_position = self.byte_code.instructions.len();
+                self.add_instruction(OpCode::OpJumpNotTrue(9999));
+                self.compile_statements(consequence);
+                if self.last_instruction_is_pop() {
+                    self.remove_last_pop();
+                }
+                if alternative.is_empty() {
+                    self.change_op(
+                        op_jump_position,
+                        OpCode::OpJumpNotTrue(self.byte_code.instructions.len() as u16)
+                    );
+                } else {
+                    self.change_op(
+                        op_jump_position,
+                        OpCode::OpJumpNotTrue(self.byte_code.instructions.len() as u16 + 3) // plus three to account for extra jump at end of if block
+                    );
+
+                    let op_jump_position = self.byte_code.instructions.len();
+                    self.add_instruction(OpCode::OpJump(9999));
+                    self.compile_statements(alternative);
+                    if self.last_instruction_is_pop() {
+                        self.remove_last_pop();
+                    }
+                    self.change_op(
+                        op_jump_position,
+                        OpCode::OpJump(self.byte_code.instructions.len() as u16)
+                    );
+                }
+            },
+            _ => panic!("unsupported expression"),
+        };
+    }
+
+    fn last_instruction_is_pop(&self) -> bool {
+        self.byte_code.instructions.last() == Some(&make_op(OpCode::OpPop)[0])
+    }
+
+    fn remove_last_pop(&mut self) {
+        self.byte_code.instructions.pop();
+    }
+
+    fn compile_statements(&mut self, ast: Vec<Statement>) {
+        for statement in ast {
+            match statement {
+                Statement::Let { name, value } => {
+                    self.compile_expression(value);
+                    self.add_instruction(OpCode::OpSetGlobal(0));
+                },
+                Statement::Return { .. } => unimplemented!(),
+                Statement::Expression(expr) => {
+                    self.compile_expression(expr);
+
+                    // pop one element from the stack after each expression statement to clean up
+                    self.add_instruction(OpCode::OpPop);
+                },
+            }
         }
     }
+
 }
 
 pub fn compile_from_source(input: &str) -> ByteCode {
-    let mut tokens = lexer().parse(input.as_bytes()).unwrap();
-    let ast = parse(&mut tokens);
-    let mut byte_code = ByteCode::new();
-    compile(ast, &mut byte_code);
-
-    byte_code
+    // wrap compiler method to hide compiler struct from outside this module
+    Compiler::compile_from_source(input)
 }
 
 #[cfg(test)]
