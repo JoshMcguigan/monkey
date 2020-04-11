@@ -283,7 +283,7 @@ mod tests {
     }
 
     fn test_eval(input: &str, expected: Object) {
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
         let mut env = Env::new();
         let obj = eval_return_scope(ast, &mut env);

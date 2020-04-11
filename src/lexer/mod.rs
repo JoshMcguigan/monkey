@@ -61,13 +61,12 @@ pub enum Token {
     NOT_EQ,
 }
 
-// TODO this shouldn't be a result type
-pub fn lex(input: &str) -> Result<Vec<Token>, ()> {
+pub fn lex(input: &str) -> Vec<Token> {
     let mut tokens = Token::lexer(input)
         .collect::<Vec<Token>>();
     tokens.push(Token::EOF);
 
-    Ok(tokens)
+    tokens
 }
 
 #[cfg(test)]
@@ -91,7 +90,7 @@ mod tests {
                 Token::SEMICOLON,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -109,7 +108,7 @@ mod tests {
                 Token::SEMICOLON,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -127,7 +126,7 @@ mod tests {
                 Token::SEMICOLON,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -147,7 +146,7 @@ mod tests {
                 Token::SEMICOLON,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -180,7 +179,7 @@ mod tests {
                 Token::SEMICOLON,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -203,7 +202,7 @@ mod tests {
                 Token::SEMICOLON,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -222,7 +221,7 @@ mod tests {
                 Token::BANG,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -256,7 +255,7 @@ mod tests {
                 Token::RBRACE,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -280,7 +279,7 @@ mod tests {
                 Token::SEMICOLON,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 
@@ -298,7 +297,7 @@ mod tests {
                 Token::SEMICOLON,
                 Token::EOF,
             ],
-            tokens.unwrap()
+            tokens
         );
     }
 

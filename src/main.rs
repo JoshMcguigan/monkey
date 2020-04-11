@@ -21,7 +21,7 @@ fn main() {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
-                let mut tokens = lex(&line).unwrap();
+                let mut tokens = lex(&line);
                 let ast = parse(&mut tokens);
                 display_object(eval_return_scope(ast, &mut env));
             },

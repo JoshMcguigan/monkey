@@ -35,7 +35,7 @@ impl Compiler {
             symbol_table: SymbolTable::new(),
         };
 
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
         compiler.compile_statements(ast);
 

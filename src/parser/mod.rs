@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn parse_let() {
         let input = "let x = 5;";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn parse_return() {
         let input = "return 5;";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn parse_let_ident() {
         let input = "let myVar = anotherV;";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn parse_expression_statement() {
         let input = "foo;";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -309,7 +309,7 @@ mod tests {
     #[test]
     fn parse_expression_statement_const() {
         let input = "5;";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -323,7 +323,7 @@ mod tests {
     #[test]
     fn parse_expression_statement_string() {
         let input = r#" "foo bar";"#;
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -337,7 +337,7 @@ mod tests {
     #[test]
     fn parse_prefix_expression() {
         let input = "!5; -15;";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -383,7 +383,7 @@ mod tests {
     }
 
     fn parse_infix_expression(input: &str, operator: Operator) {
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -401,7 +401,7 @@ mod tests {
     #[test]
     fn parse_infix_expression_order_of_operations() {
         let input = "-a * 6;";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -419,7 +419,7 @@ mod tests {
     #[test]
     fn parse_bool() {
         let input = "!true == false;";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -437,7 +437,7 @@ mod tests {
     #[test]
     fn parse_paren() {
         let input = "1 + (2 + 3);";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -459,7 +459,7 @@ mod tests {
     #[test]
     fn parse_if() {
         let input = "if (5) { 6; };";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -477,7 +477,7 @@ mod tests {
     #[test]
     fn parse_if_else() {
         let input = "if (5) { 6; } else { 7; };";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn parse_function_literal() {
         let input = "let myFunc = fn(x, y) {x + y;};";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -523,7 +523,7 @@ mod tests {
     #[test]
     fn parse_function_call() {
         let input = "add(1, 2);";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
@@ -542,7 +542,7 @@ mod tests {
     #[test]
     fn parse_function_expression() {
         let input = "myFunc(x + y, a + b);";
-        let mut tokens = lex(input).unwrap();
+        let mut tokens = lex(input);
         let ast = parse(&mut tokens);
 
         assert_eq!(
