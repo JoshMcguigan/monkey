@@ -1,7 +1,7 @@
 use crate::eval::Object;
 use crate::parser::{Statement, Expr, parse};
 use crate::code::{make_op, OpCode};
-use crate::lexer::lexer;
+use crate::lexer::lex;
 use crate::parser::Operator;
 use crate::parser::Prefix;
 use crate::compiler::symbol_table::SymbolTable;
@@ -35,7 +35,7 @@ impl Compiler {
             symbol_table: SymbolTable::new(),
         };
 
-        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let mut tokens = lex(input).unwrap();
         let ast = parse(&mut tokens);
         compiler.compile_statements(ast);
 

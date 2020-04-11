@@ -1,104 +1,73 @@
-use pom::parser::{Parser, seq, one_of, is_a, not_a, end};
+use logos::Logos;
 
-use std::str::FromStr;
-
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Logos, Debug, PartialEq, Clone)]
 #[allow(non_camel_case_types)]
+#[logos(trivia = r"\p{Whitespace}")]
 pub enum Token {
+    #[error]
+    ERROR,
     EOF,
+    #[regex("[a-zA-Z]+", |lexer| lexer.slice().to_owned())]
     IDENT(String),
+    #[regex("[0-9]+", |lexer| lexer.slice().parse())]
     INT(i32),
+    #[regex(r#""[^"]*""#, |lexer| lexer.slice()[1..(lexer.slice().len()-1)].to_owned())]
     STRING(String), // string literal, let x = "my string";
+    #[token = "="]
     ASSIGN,
+    #[token = "+"]
     PLUS,
+    #[token = "-"]
     MINUS,
+    #[token = "/"]
     SLASH,
+    #[token = "*"]
     ASTERISK,
+    #[token = "<"]
     LT,
+    #[token = ">"]
     GT,
+    #[token = "!"]
     BANG,
+    #[token = ","]
     COMMA,
+    #[token = ";"]
     SEMICOLON,
+    #[token = "("]
     LPAREN,
+    #[token = ")"]
     RPAREN,
+    #[token = "{"]
     LBRACE,
+    #[token = "}"]
     RBRACE,
+    #[token = "fn"]
     FUNCTION,
+    #[token = "let"]
     LET,
+    #[token = "if"]
     IF,
+    #[token = "else"]
     ELSE,
+    #[token = "return"]
     RETURN,
+    #[token = "true"]
     TRUE,
+    #[token = "false"]
     FALSE,
+    #[token = "=="]
     EQ,
+    #[token = "!="]
     NOT_EQ,
 }
 
-fn space<'a>() -> Parser<'a, u8, ()> {
-    one_of(b" \t\r\n").repeat(1..).discard()
-}
+// TODO this shouldn't be a result type
+pub fn lex(input: &str) -> Result<Vec<Token>, ()> {
+    let mut tokens = Token::lexer(input)
+        .collect::<Vec<Token>>();
+    tokens.push(Token::EOF);
 
-fn lex_keyword<'a>(match_str: &'static str, token: Token) -> Parser<'a, u8, Token> {
-    seq(match_str.as_bytes()).map(move |_| token.clone())
-        - -not_a(|byte| char::from(byte).is_alphabetic())
-}
-
-fn lex_ident<'a>() -> Parser<'a, u8, Token> {
-    is_a(|byte| char::from(byte).is_alphabetic())
-        .repeat(1..).convert(String::from_utf8)
-        .map(|ident| Token::IDENT(ident) )
-}
-
-fn lex_string<'a>() -> Parser<'a, u8, Token> {
-    seq(b"\"") *
-    is_a(|byte| char::from(byte) != '"') // capture until end quote
-        .repeat(0..).convert(String::from_utf8)
-        .map(|string| Token::STRING(string) )
-    - seq(b"\"")
-}
-
-fn lex_int<'a>() -> Parser<'a, u8, Token> {
-    is_a(|byte| char::from(byte).is_numeric())
-        .repeat(1..)
-        .convert(String::from_utf8)
-        .convert(|num|i32::from_str(&num))
-        .map(|num| Token::INT(num) )
-}
-
-fn lex_token<'a>() -> Parser<'a, u8, Token> {
-    space().opt() * (
-          lex_keyword("let", Token::LET)
-        | lex_keyword("fn", Token::FUNCTION)
-        | lex_keyword("if", Token::IF)
-        | lex_keyword("else", Token::ELSE)
-        | lex_keyword("return", Token::RETURN)
-        | lex_keyword("true", Token::TRUE)
-        | lex_keyword("false", Token::FALSE)
-        | lex_ident()
-        | lex_string()
-        | lex_int()
-        | seq(b"==").map(|_| Token::EQ)
-        | seq(b"!=").map(|_| Token::NOT_EQ)
-        | seq(b"=").map(|_| Token::ASSIGN)
-        | seq(b"+").map(|_| Token::PLUS)
-        | seq(b"-").map(|_| Token::MINUS)
-        | seq(b"/").map(|_| Token::SLASH)
-        | seq(b"*").map(|_| Token::ASTERISK)
-        | seq(b"<").map(|_| Token::LT)
-        | seq(b">").map(|_| Token::GT)
-        | seq(b"!").map(|_| Token::BANG)
-        | seq(b"(").map(|_| Token::LPAREN)
-        | seq(b")").map(|_| Token::RPAREN)
-        | seq(b"{").map(|_| Token::LBRACE)
-        | seq(b"}").map(|_| Token::RBRACE)
-        | seq(b",").map(|_| Token::COMMA)
-        | seq(b";").map(|_| Token::SEMICOLON)
-    ) - space().opt()
-}
-
-pub fn lexer<'a>() -> Parser<'a, u8, Vec<Token>> {
-    ( lex_token().repeat(0..) + end() )
-        .map(|(mut tokens, _eof)| {tokens.push(Token::EOF); tokens})
+    Ok(tokens)
 }
 
 #[cfg(test)]
@@ -108,7 +77,7 @@ mod tests {
     #[test]
     fn lex_tokens() {
         let input = "=+(){},;";
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -129,7 +98,7 @@ mod tests {
     #[test]
     fn lex_let() {
         let input = "let five = 5;";
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -147,7 +116,7 @@ mod tests {
     #[test]
     fn lex_let_ident_contains_keyword() {
         let input = "let letter = 5;";
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -165,7 +134,7 @@ mod tests {
     #[test]
     fn lex_ident_ending_with_semicolon() {
         let input = "let ten = 5 + five;";
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -189,7 +158,7 @@ mod tests {
               x + y;
             };
         "#;
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -218,7 +187,7 @@ mod tests {
     #[test]
     fn lex_function_call() {
         let input = "let result = add(five, ten);";
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -241,7 +210,7 @@ mod tests {
     #[test]
     fn lex_additional_opeations() {
         let input = "- / * < > !";
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -266,7 +235,7 @@ mod tests {
                 return false;
             }
         "#;
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -297,7 +266,7 @@ mod tests {
             10 == 10;
             10 != 9;
         "#;
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![
@@ -318,7 +287,7 @@ mod tests {
     #[test]
     fn lex_string() {
         let input = r#"let words = "foo bar";"#;
-        let tokens = lexer().parse(input.as_bytes());
+        let tokens = lex(input);
 
         assert_eq!(
             vec![

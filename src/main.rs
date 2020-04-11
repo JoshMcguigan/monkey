@@ -2,7 +2,7 @@ mod parser;
 use crate::parser::parse;
 
 mod lexer;
-use crate::lexer::lexer;
+use crate::lexer::lex;
 
 mod eval;
 use crate::eval::{eval_return_scope, Object, Env};
@@ -21,7 +21,7 @@ fn main() {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
-                let mut tokens = lexer().parse(line.as_bytes()).unwrap();
+                let mut tokens = lex(&line).unwrap();
                 let ast = parse(&mut tokens);
                 display_object(eval_return_scope(ast, &mut env));
             },

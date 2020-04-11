@@ -170,7 +170,7 @@ pub fn eval_return_scope(statements: Vec<Statement>, env: &mut Env) -> Object {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer::lexer;
+    use crate::lexer::lex;
     use crate::parser::parse;
 
     #[test]
@@ -283,7 +283,7 @@ mod tests {
     }
 
     fn test_eval(input: &str, expected: Object) {
-        let mut tokens = lexer().parse(input.as_bytes()).unwrap();
+        let mut tokens = lex(input).unwrap();
         let ast = parse(&mut tokens);
         let mut env = Env::new();
         let obj = eval_return_scope(ast, &mut env);
